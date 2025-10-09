@@ -1,4 +1,5 @@
-// Archivo: controllers/userController.js
+// Archivo: controllers/userController.js (Completo y Actualizado)
+
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -45,6 +46,30 @@ exports.register = async (req, res) => {
       }
     );
 
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Error del Servidor');
+  }
+};
+
+// --- FUNCIÓN AÑADIDA ---
+// Busca un cliente por su email y devuelve sus recompensas pendientes (para empleados/jefes)
+exports.findUserByEmail = async (req, res) => {
+  const { email } = req.body;
+  try {
+    // Busca al cliente por su email
+    const userQuery = 'SELECT id, nombre, email FROM usuarios WHERE email = $1 AND rol = \'Cliente\'';
+    const userResult = await db.query(userQuery, [email]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ msg: 'Cliente no encontrado.' });
+    }
+    const cliente = userResult.rows[0];
+
+    // Busca las recompensas pendientes de ese cliente
+    const recompensasQuery = 'SELECT * FROM recompensas WHERE id_cliente = $1 AND utilizado = FALSE';
+    const recompensasResult = await db.query(recompensasQuery, [cliente.id]);
+
+    res.json({ cliente, recompensas: recompensasResult.rows });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Error del Servidor');
