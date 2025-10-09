@@ -1,4 +1,5 @@
-// Archivo: server.js (Versión Final con CORS configurado)
+// Archivo: server.js (Versión Corregida y Final)
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -8,25 +9,38 @@ const PORT = process.env.PORT || 3000;
 
 // --- Middlewares ---
 
-// --- 1. CONFIGURACIÓN DE CORS (ESTE ES EL CAMBIO) ---
-// Le decimos al backend que solo acepte peticiones de nuestro frontend
+// --- 1. CONFIGURACIÓN DE CORS CORREGIDA ---
+// Permitimos que tanto tu frontend en Render como en tu localhost se conecten
+const allowedOrigins = [
+  'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
+  'http://localhost:5173' // Tu sitio en desarrollo local (Vite usa este puerto por defecto)
+];
+
 const corsOptions = {
-  origin: 'https://tito-cafe-frontend.onrender.com',
+  origin: function (origin, callback) {
+    // Si el origen está en nuestra lista de permitidos, o no hay origen (ej. Postman), permitimos la petición
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   optionsSuccessStatus: 200 
 };
 
-app.use(cors(corsOptions)); // <-- USAMOS LA CONFIGURACIÓN AQUÍ
-
-app.use(express.json()); // El "traductor" de JSON
+app.use(cors(corsOptions));
+app.use(express.json());
 
 // --- Rutas ---
-// Registra todas las rutas de la aplicación.
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/productos', require('./routes/productosRoutes'));
 app.use('/api/ventas', require('./routes/ventasRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/pedidos', require('./routes/pedidosRoutes'));
-app.use('/api/payment', require('./routes/paymentRoutes'));
+
+
+// --- 2. RUTA DE PAGO CORREGIDA (CON 's' AL FINAL) ---
+app.use('/api/payments', require('./routes/paymentRoutes'));
 
 // Iniciar Servidor
 app.listen(PORT, () => {

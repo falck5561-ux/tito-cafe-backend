@@ -1,10 +1,12 @@
 // Archivo: routes/paymentRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware'); // Protegemos la ruta
 
-// Ruta protegida para crear un intento de pago
+// Definimos la ruta para crear la intención de pago
+// Solo usuarios autenticados pueden intentar pagar.
 router.post('/create-payment-intent', authMiddleware, paymentController.createPaymentIntent);
 
 module.exports = router;
