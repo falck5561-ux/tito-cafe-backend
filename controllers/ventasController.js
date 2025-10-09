@@ -1,4 +1,4 @@
-// Archivo: controllers/ventasController.js (Versión Final y Completa)
+// Archivo: controllers/ventasController.js (Versión Final con TODO incluido)
 
 const db = require('../config/db');
 
@@ -24,7 +24,6 @@ exports.crearVenta = async (req, res) => {
 
     await db.query('COMMIT');
     res.status(201).json({ msg: 'Venta registrada con éxito', ventaId: nuevaVentaId });
-
   } catch (err) {
     await db.query('ROLLBACK');
     console.error(err.message);
@@ -47,21 +46,28 @@ exports.obtenerReporteVentas = async (req, res) => {
   }
 };
 
-// Obtener un reporte de ventas por producto (para el Jefe)
+// --- FUNCIÓN CORREGIDA PARA EL REPORTE POR PRODUCTO ---
 exports.obtenerReportePorProducto = async (req, res) => {
-  const { inicio, fin } = req.query;
+  const { inicio, fin } = req.query; // Obtiene las fechas de los parámetros de la URL
+
   if (!inicio || !fin) {
     return res.status(400).json({ msg: 'Las fechas de inicio y fin son requeridas.' });
   }
+
   try {
+    // La consulta SQL que tenías estaba casi bien, solo ajustamos la tabla de detalles
     const reporteQuery = `
-      SELECT pr.id, pr.nombre, SUM(dp.cantidad) as unidades_vendidas,
-        SUM(dp.cantidad * dp.precio_unidad) as ingreso_total
-      FROM detalles_venta dp
-      JOIN productos pr ON dp.id_producto = pr.id
-      JOIN ventas v ON dp.id_venta = v.id
-      WHERE v.fecha BETWEEN $1 AND $2
-      GROUP BY pr.id, pr.nombre ORDER BY ingreso_total DESC;
+      SELECT 
+        pr.id, 
+        pr.nombre, 
+        SUM(dv.cantidad) as unidades_vendidas,
+        SUM(dv.cantidad * dv.precio_unidad) as ingreso_total
+      FROM detalles_venta dv
+      JOIN productos pr ON dv.id_producto = pr.id
+      JOIN ventas v ON dv.id_venta = v.id
+      WHERE v.fecha::date BETWEEN $1 AND $2
+      GROUP BY pr.id, pr.nombre 
+      ORDER BY ingreso_total DESC;
     `;
     const result = await db.query(reporteQuery, [inicio, fin]);
     res.json(result.rows);
@@ -71,24 +77,7 @@ exports.obtenerReportePorProducto = async (req, res) => {
   }
 };
 
-// Obtener las ventas del POS realizadas por el empleado logueado
-exports.obtenerMisVentas = async (req, res) => {
-  try {
-    const id_empleado = req.user.id;
-    const query = `
-      SELECT * FROM ventas 
-      WHERE id_empleado = $1 AND DATE(fecha) = CURRENT_DATE 
-      ORDER BY fecha DESC;
-    `;
-    const result = await db.query(query, [id_empleado]);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Error del Servidor');
-  }
-};
-
-// --- FUNCIÓN CORRECTA PARA LA PESTAÑA "VENTAS DEL DÍA" ---
+// Obtener las ventas del día (para el POS)
 exports.obtenerVentasDelDia = async (req, res) => {
   try {
     const query = `
