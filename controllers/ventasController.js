@@ -1,4 +1,5 @@
-// Archivo: controllers/ventasController.js (Completo con historial de empleado)
+// Archivo: controllers/ventasController.js (Versión Final y Completa)
+
 const db = require('../config/db');
 
 // Crear una nueva venta (para el POS)
@@ -31,7 +32,7 @@ exports.crearVenta = async (req, res) => {
   }
 };
 
-// Obtener un reporte de ventas general agrupado por día (para el Jefe)
+// Obtener un reporte de ventas general (para el Jefe)
 exports.obtenerReporteVentas = async (req, res) => {
   try {
     const reporteQuery = `
@@ -46,14 +47,12 @@ exports.obtenerReporteVentas = async (req, res) => {
   }
 };
 
-// Obtener un reporte de ventas detallado por producto (para el Jefe)
+// Obtener un reporte de ventas por producto (para el Jefe)
 exports.obtenerReportePorProducto = async (req, res) => {
   const { inicio, fin } = req.query;
-
   if (!inicio || !fin) {
     return res.status(400).json({ msg: 'Las fechas de inicio y fin son requeridas.' });
   }
-
   try {
     const reporteQuery = `
       SELECT pr.id, pr.nombre, SUM(dp.cantidad) as unidades_vendidas,
@@ -72,18 +71,34 @@ exports.obtenerReportePorProducto = async (req, res) => {
   }
 };
 
-// --- FUNCIÓN NUEVA AÑADIDA ---
-// Obtener las ventas del POS realizadas por el empleado que está logueado
+// Obtener las ventas del POS realizadas por el empleado logueado
 exports.obtenerMisVentas = async (req, res) => {
   try {
     const id_empleado = req.user.id;
-    // Buscamos solo las ventas del día de hoy para este empleado
     const query = `
       SELECT * FROM ventas 
       WHERE id_empleado = $1 AND DATE(fecha) = CURRENT_DATE 
       ORDER BY fecha DESC;
     `;
     const result = await db.query(query, [id_empleado]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Error del Servidor');
+  }
+};
+
+// --- FUNCIÓN CORRECTA PARA LA PESTAÑA "VENTAS DEL DÍA" ---
+exports.obtenerVentasDelDia = async (req, res) => {
+  try {
+    const query = `
+      SELECT v.id, v.fecha, v.total, v.metodo_pago, u.nombre as nombre_empleado
+      FROM ventas v
+      JOIN usuarios u ON v.id_empleado = u.id
+      WHERE DATE(v.fecha) = CURRENT_DATE
+      ORDER BY v.fecha DESC;
+    `;
+    const result = await db.query(query);
     res.json(result.rows);
   } catch (err) {
     console.error(err.message);
