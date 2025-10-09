@@ -1,4 +1,5 @@
-// Archivo: controllers/pedidosController.js (Completo y Mejorado)
+// Archivo: controllers/pedidosController.js
+
 const db = require('../config/db');
 
 exports.crearPedido = async (req, res) => {
@@ -11,15 +12,37 @@ exports.crearPedido = async (req, res) => {
 
   try {
     await db.query('BEGIN');
+    
     const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente) VALUES ($1, $2) RETURNING id';
     const pedidoResult = await db.query(pedidoQuery, [total, id_cliente]);
     const nuevoPedidoId = pedidoResult.rows[0].id;
+
     for (const producto of productos) {
+      const cantidad = producto.cantidad || 1; 
       const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      await db.query(detalleQuery, [nuevoPedidoId, producto.id, 1, producto.precio]);
+      await db.query(detalleQuery, [nuevoPedidoId, producto.id, cantidad, producto.precio]);
     }
+
+    let recompensaGenerada = false;
+    const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
+    const countResult = await db.query(countQuery, [id_cliente]);
+    const totalPedidos = parseInt(countResult.rows[0].count, 10);
+
+    if (totalPedidos > 0 && totalPedidos % 10 === 0) {
+      const descripcion = `¡Felicidades! Tienes un café o frappe gratis por tus ${totalPedidos} compras.`;
+      const recompensaQuery = 'INSERT INTO recompensas (id_cliente, descripcion) VALUES ($1, $2)';
+      await db.query(recompensaQuery, [id_cliente, descripcion]);
+      recompensaGenerada = true;
+    }
+    
     await db.query('COMMIT');
-    res.status(201).json({ msg: 'Pedido realizado con éxito', pedidoId: nuevoPedidoId });
+    
+    res.status(201).json({ 
+      msg: 'Pedido realizado con éxito', 
+      pedidoId: nuevoPedidoId,
+      recompensaGenerada
+    });
+
   } catch (err) {
     await db.query('ROLLBACK');
     console.error(err.message);
@@ -27,8 +50,6 @@ exports.crearPedido = async (req, res) => {
   }
 };
 
-// --- FUNCIÓN MEJORADA ---
-// Ahora esta función también devuelve la lista de productos de cada pedido.
 exports.obtenerPedidos = async (req, res) => {
   try {
     const query = `
