@@ -1,38 +1,62 @@
-// Archivo: controllers/pedidosController.js (Actualizado para Tipos de Orden)
+// Archivo: controllers/pedidosController.js (Actualizado para guardar coordenadas)
 
-const db = require('../config/db');
+const db = require('../config/db'); // Asumo que este es tu archivo de conexión a la BD
 
 exports.crearPedido = async (req, res) => {
-  // Ahora recibimos los nuevos campos del frontend
-  const { total, productos, tipo_orden, direccion_entrega, costo_envio } = req.body;
+  // <-- CAMBIO: Se añaden latitude y longitude a la lista de datos recibidos
+  const { 
+    total, 
+    productos, 
+    tipo_orden, 
+    direccion_entrega, 
+    costo_envio,
+    latitude,
+    longitude
+  } = req.body;
+  
   const id_cliente = req.user.id; 
 
   if (!total || !productos || productos.length === 0 || !tipo_orden) {
     return res.status(400).json({ msg: 'Faltan datos para crear el pedido.' });
   }
 
-  // Si es entrega a domicilio, la dirección es obligatoria
-  if (tipo_orden === 'domicilio' && !direccion_entrega) {
-    return res.status(400).json({ msg: 'La dirección es obligatoria para la entrega a domicilio.' });
+  // <-- CAMBIO: Se mejora la validación para pedidos a domicilio
+  if (tipo_orden === 'domicilio' && (!direccion_entrega || !latitude || !longitude)) {
+    return res.status(400).json({ msg: 'La dirección y coordenadas son obligatorias para la entrega a domicilio.' });
   }
 
   try {
+    // Usamos 'BEGIN' para iniciar una transacción, lo cual es una excelente práctica
     await db.query('BEGIN');
     
-    // Actualizamos la consulta para guardar la nueva información
+    // <-- CAMBIO: Se actualiza la consulta SQL para guardar la nueva información
     const pedidoQuery = `
-      INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio) 
-      VALUES ($1, $2, $3, $4, $5) RETURNING id
+      INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
     `;
-    const pedidoResult = await db.query(pedidoQuery, [total, id_cliente, tipo_orden, direccion_entrega, costo_envio]);
+    
+    // <-- CAMBIO: Se crea un array con los nuevos valores en el orden correcto
+    const pedidoValues = [
+      total, 
+      id_cliente, 
+      tipo_orden, 
+      direccion_entrega, 
+      costo_envio,
+      latitude,
+      longitude
+    ];
+    
+    const pedidoResult = await db.query(pedidoQuery, pedidoValues);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
+    // Esta parte para guardar los detalles del pedido está perfecta y no cambia
     for (const producto of productos) {
       const cantidad = producto.cantidad || 1; 
       const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
       await db.query(detalleQuery, [nuevoPedidoId, producto.id, cantidad, producto.precio]);
     }
 
+    // Tu lógica de recompensas está excelente y no cambia
     let recompensaGenerada = false;
     const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
     const countResult = await db.query(countQuery, [id_cliente]);
@@ -45,7 +69,7 @@ exports.crearPedido = async (req, res) => {
       recompensaGenerada = true;
     }
     
-    await db.query('COMMIT');
+    await db.query('COMMIT'); // Se confirman todos los cambios en la base de datos
     
     res.status(201).json({ 
       msg: 'Pedido realizado con éxito', 
@@ -54,13 +78,14 @@ exports.crearPedido = async (req, res) => {
     });
 
   } catch (err) {
-    await db.query('ROLLBACK');
+    await db.query('ROLLBACK'); // Si algo falla, se deshacen todos los cambios
     console.error(err.message);
     res.status(500).send('Error del Servidor al realizar el pedido');
   }
 };
 
-// ... (Pega aquí el resto de tus funciones de este archivo: obtenerPedidos, actualizarEstadoPedido, etc. No cambian)
+// --- EL RESTO DE TUS FUNCIONES NO NECESITAN CAMBIOS ---
+
 exports.obtenerPedidos = async (req, res) => {
   try {
     const query = `
