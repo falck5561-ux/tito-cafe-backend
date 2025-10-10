@@ -38,7 +38,7 @@ app.use('/api/ventas', require('./routes/ventasRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/pedidos', require('./routes/pedidosRoutes'));
 app.use('/api/recompensas', require('./routes/recompensasRoutes'));
-
+app.use('/api/envio', require('./routes/envioRoutes'));
 
 // --- 2. RUTA DE PAGO CORREGIDA (CON 's' AL FINAL) ---
 app.use('/api/payments', require('./routes/paymentRoutes'));
