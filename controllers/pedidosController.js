@@ -1,20 +1,30 @@
-// Archivo: controllers/pedidosController.js
+// Archivo: controllers/pedidosController.js (Actualizado para Tipos de Orden)
 
 const db = require('../config/db');
 
 exports.crearPedido = async (req, res) => {
-  const { total, productos } = req.body;
+  // Ahora recibimos los nuevos campos del frontend
+  const { total, productos, tipo_orden, direccion_entrega, costo_envio } = req.body;
   const id_cliente = req.user.id; 
 
-  if (!total || !productos || productos.length === 0) {
-    return res.status(400).json({ msg: 'El pedido no puede estar vacío.' });
+  if (!total || !productos || productos.length === 0 || !tipo_orden) {
+    return res.status(400).json({ msg: 'Faltan datos para crear el pedido.' });
+  }
+
+  // Si es entrega a domicilio, la dirección es obligatoria
+  if (tipo_orden === 'domicilio' && !direccion_entrega) {
+    return res.status(400).json({ msg: 'La dirección es obligatoria para la entrega a domicilio.' });
   }
 
   try {
     await db.query('BEGIN');
     
-    const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente) VALUES ($1, $2) RETURNING id';
-    const pedidoResult = await db.query(pedidoQuery, [total, id_cliente]);
+    // Actualizamos la consulta para guardar la nueva información
+    const pedidoQuery = `
+      INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio) 
+      VALUES ($1, $2, $3, $4, $5) RETURNING id
+    `;
+    const pedidoResult = await db.query(pedidoQuery, [total, id_cliente, tipo_orden, direccion_entrega, costo_envio]);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
     for (const producto of productos) {
@@ -50,11 +60,12 @@ exports.crearPedido = async (req, res) => {
   }
 };
 
+// ... (Pega aquí el resto de tus funciones de este archivo: obtenerPedidos, actualizarEstadoPedido, etc. No cambian)
 exports.obtenerPedidos = async (req, res) => {
   try {
     const query = `
       SELECT 
-        p.id, p.fecha, p.total, p.estado, u.nombre as nombre_cliente,
+        p.id, p.fecha, p.total, p.estado, p.tipo_orden, u.nombre as nombre_cliente,
         (
           SELECT json_agg(json_build_object('nombre', pr.nombre, 'cantidad', dp.cantidad, 'precio', dp.precio_unidad))
           FROM detalles_pedido dp
@@ -96,7 +107,7 @@ exports.obtenerMisPedidos = async (req, res) => {
   try {
     const id_cliente = req.user.id;
     const query = `
-      SELECT p.id, p.fecha, p.total, p.estado
+      SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden
       FROM pedidos p
       WHERE p.id_cliente = $1
       ORDER BY p.fecha DESC;
