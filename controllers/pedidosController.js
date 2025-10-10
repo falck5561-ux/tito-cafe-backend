@@ -1,9 +1,9 @@
-// Archivo: controllers/pedidosController.js (Actualizado para guardar coordenadas)
+// Archivo: controllers/pedidosController.js (Completo y Actualizado)
 
-const db = require('../config/db'); // Asumo que este es tu archivo de conexión a la BD
+const db = require('../config/db');
+const axios = require('axios'); // <-- LÍNEA AÑADIDA
 
 exports.crearPedido = async (req, res) => {
-  // <-- CAMBIO: Se añaden latitude y longitude a la lista de datos recibidos
   const { 
     total, 
     productos, 
@@ -20,22 +20,18 @@ exports.crearPedido = async (req, res) => {
     return res.status(400).json({ msg: 'Faltan datos para crear el pedido.' });
   }
 
-  // <-- CAMBIO: Se mejora la validación para pedidos a domicilio
   if (tipo_orden === 'domicilio' && (!direccion_entrega || !latitude || !longitude)) {
     return res.status(400).json({ msg: 'La dirección y coordenadas son obligatorias para la entrega a domicilio.' });
   }
 
   try {
-    // Usamos 'BEGIN' para iniciar una transacción, lo cual es una excelente práctica
     await db.query('BEGIN');
     
-    // <-- CAMBIO: Se actualiza la consulta SQL para guardar la nueva información
     const pedidoQuery = `
       INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude) 
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
     `;
     
-    // <-- CAMBIO: Se crea un array con los nuevos valores en el orden correcto
     const pedidoValues = [
       total, 
       id_cliente, 
@@ -49,14 +45,12 @@ exports.crearPedido = async (req, res) => {
     const pedidoResult = await db.query(pedidoQuery, pedidoValues);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
-    // Esta parte para guardar los detalles del pedido está perfecta y no cambia
     for (const producto of productos) {
       const cantidad = producto.cantidad || 1; 
       const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
       await db.query(detalleQuery, [nuevoPedidoId, producto.id, cantidad, producto.precio]);
     }
 
-    // Tu lógica de recompensas está excelente y no cambia
     let recompensaGenerada = false;
     const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
     const countResult = await db.query(countQuery, [id_cliente]);
@@ -69,7 +63,7 @@ exports.crearPedido = async (req, res) => {
       recompensaGenerada = true;
     }
     
-    await db.query('COMMIT'); // Se confirman todos los cambios en la base de datos
+    await db.query('COMMIT');
     
     res.status(201).json({ 
       msg: 'Pedido realizado con éxito', 
@@ -78,13 +72,11 @@ exports.crearPedido = async (req, res) => {
     });
 
   } catch (err) {
-    await db.query('ROLLBACK'); // Si algo falla, se deshacen todos los cambios
+    await db.query('ROLLBACK');
     console.error(err.message);
     res.status(500).send('Error del Servidor al realizar el pedido');
   }
 };
-
-// --- EL RESTO DE TUS FUNCIONES NO NECESITAN CAMBIOS ---
 
 exports.obtenerPedidos = async (req, res) => {
   try {
@@ -142,5 +134,42 @@ exports.obtenerMisPedidos = async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Error del Servidor');
+  }
+};
+
+// <-- NUEVA FUNCIÓN AÑADIDA -->
+exports.calcularCostoEnvio = async (req, res) => {
+  const { lat, lng } = req.body;
+  const originLat = process.env.STORE_LATITUDE;
+  const originLng = process.env.STORE_LONGITUDE;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY_BACKEND;
+
+  if (!lat || !lng || !originLat || !originLng || !apiKey) {
+    return res.status(400).json({ msg: 'Faltan coordenadas o configuración del servidor.' });
+  }
+
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originLat},${originLng}&destinations=${lat},${lng}&key=${apiKey}`;
+
+  try {
+    const response = await axios.get(url);
+    
+    if (response.data.rows[0].elements[0].status === 'ZERO_RESULTS') {
+      return res.status(404).json({ msg: 'Ubicación fuera del área de entrega.' });
+    }
+
+    const distanceInMeters = response.data.rows[0].elements[0].distance.value;
+    const distanceInKm = distanceInMeters / 1000;
+
+    // --- ¡AQUÍ DEFINES TUS PRECIOS! ---
+    const baseFee = 20; // $20 MXN de tarifa base
+    const feePerKm = 5; // $5 MXN por cada kilómetro
+    const deliveryCost = baseFee + (distanceInKm * feePerKm);
+    // ------------------------------------
+
+    res.json({ deliveryCost: Math.ceil(deliveryCost) });
+
+  } catch (error) {
+    console.error("Error al calcular costo de envío:", error.response ? error.response.data : error.message);
+    res.status(500).json({ msg: 'No se pudo calcular el costo de envío.' });
   }
 };
