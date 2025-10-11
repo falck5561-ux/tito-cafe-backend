@@ -1,4 +1,4 @@
-// Archivo: controllers/pedidosController.js (Versión con detalles de envío para empleados)
+// Archivo: controllers/pedidosController.js (Versión corregida)
 
 const db = require('../config/db');
 const axios = require('axios');
@@ -14,7 +14,8 @@ exports.crearPedido = async (req, res) => {
     direccion_entrega, 
     costo_envio,
     latitude,
-    longitude
+    longitude,
+    referencia // Dato de referencia añadido
   } = req.body;
   
   const id_cliente = req.user.id; 
@@ -30,8 +31,9 @@ exports.crearPedido = async (req, res) => {
   try {
     await db.query('BEGIN');
     
-    const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
-    const pedidoValues = [total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude];
+    // Se añade la columna 'referencia' a la consulta SQL y el valor correspondiente
+    const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id';
+    const pedidoValues = [total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia];
     const pedidoResult = await db.query(pedidoQuery, pedidoValues);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
@@ -68,12 +70,11 @@ exports.crearPedido = async (req, res) => {
 };
 
 //=================================================================
-// OBTENER TODOS LOS PEDIDOS (PARA EMPLEADOS) - VERSIÓN ACTUALIZADA
+// OBTENER TODOS LOS PEDIDOS (PARA EMPLEADOS)
 //=================================================================
 exports.obtenerPedidos = async (req, res) => {
   try {
-    // === CAMBIO REALIZADO AQUÍ ===
-    // Se añaden las columnas: p.direccion_entrega, p.latitude, p.longitude
+    // Se añade p.referencia a la consulta para que esté disponible para el empleado
     const query = `
       SELECT 
         p.id, 
@@ -84,6 +85,7 @@ exports.obtenerPedidos = async (req, res) => {
         p.direccion_entrega, 
         p.latitude, 
         p.longitude, 
+        p.referencia,
         u.nombre as nombre_cliente,
         (
           SELECT json_agg(json_build_object('nombre', pr.nombre, 'cantidad', dp.cantidad, 'precio', dp.precio_unidad))
@@ -95,7 +97,6 @@ exports.obtenerPedidos = async (req, res) => {
       JOIN usuarios u ON p.id_cliente = u.id
       ORDER BY p.fecha DESC;
     `;
-    // === FIN DEL CAMBIO ===
     const result = await db.query(query);
     res.json(result.rows);
   } catch (err) {
