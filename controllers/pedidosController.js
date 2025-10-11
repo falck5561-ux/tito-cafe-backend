@@ -1,4 +1,4 @@
-// Archivo: controllers/pedidosController.js (Versión Final y Limpia)
+// Archivo: controllers/pedidosController.js (Versión Final y Completa)
 
 const db = require('../config/db');
 const axios = require('axios');
@@ -27,34 +27,33 @@ exports.crearPedido = async (req, res) => {
     return res.status(400).json({ msg: 'La dirección y coordenadas son obligatorias para la entrega a domicilio.' });
   }
 
-  const client = await db.connect();
-
   try {
-    await client.query('BEGIN');
+    // Usamos 'db.query' directamente para la transacción
+    await db.query('BEGIN');
     
     const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
     const pedidoValues = [total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude];
-    const pedidoResult = await client.query(pedidoQuery, pedidoValues);
+    const pedidoResult = await db.query(pedidoQuery, pedidoValues);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
     for (const producto of productos) {
       const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      await client.query(detalleQuery, [nuevoPedidoId, producto.id, producto.cantidad, producto.precio]);
+      await db.query(detalleQuery, [nuevoPedidoId, producto.id, producto.cantidad, producto.precio]);
     }
 
     let recompensaGenerada = false;
     const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
-    const countResult = await client.query(countQuery, [id_cliente]);
+    const countResult = await db.query(countQuery, [id_cliente]);
     const totalPedidos = parseInt(countResult.rows[0].count, 10);
 
     if (totalPedidos > 0 && totalPedidos % 10 === 0) {
       const descripcion = `¡Felicidades! Tienes un café o frappe gratis por tus ${totalPedidos} compras.`;
       const recompensaQuery = 'INSERT INTO recompensas (id_cliente, descripcion) VALUES ($1, $2)';
-      await client.query(recompensaQuery, [id_cliente, descripcion]);
+      await db.query(recompensaQuery, [id_cliente, descripcion]);
       recompensaGenerada = true;
     }
     
-    await client.query('COMMIT');
+    await db.query('COMMIT');
     
     res.status(201).json({ 
       msg: 'Pedido realizado con éxito', 
@@ -63,11 +62,9 @@ exports.crearPedido = async (req, res) => {
     });
 
   } catch (err) {
-    await client.query('ROLLBACK');
+    await db.query('ROLLBACK');
     console.error("Error en crearPedido:", err.message, err.stack);
     res.status(500).send('Error del Servidor al realizar el pedido');
-  } finally {
-    client.release();
   }
 };
 
