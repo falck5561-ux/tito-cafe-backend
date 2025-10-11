@@ -1,4 +1,4 @@
-// Archivo: controllers/pedidosController.js (Versión Final y Completa)
+// Archivo: controllers/pedidosController.js (Versión con detalles de envío para empleados)
 
 const db = require('../config/db');
 const axios = require('axios');
@@ -28,7 +28,6 @@ exports.crearPedido = async (req, res) => {
   }
 
   try {
-    // Usamos 'db.query' directamente para la transacción
     await db.query('BEGIN');
     
     const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
@@ -69,13 +68,23 @@ exports.crearPedido = async (req, res) => {
 };
 
 //=================================================================
-// OBTENER TODOS LOS PEDIDOS (PARA EMPLEADOS)
+// OBTENER TODOS LOS PEDIDOS (PARA EMPLEADOS) - VERSIÓN ACTUALIZADA
 //=================================================================
 exports.obtenerPedidos = async (req, res) => {
   try {
+    // === CAMBIO REALIZADO AQUÍ ===
+    // Se añaden las columnas: p.direccion_entrega, p.latitude, p.longitude
     const query = `
       SELECT 
-        p.id, p.fecha, p.total, p.estado, p.tipo_orden, u.nombre as nombre_cliente,
+        p.id, 
+        p.fecha, 
+        p.total, 
+        p.estado, 
+        p.tipo_orden, 
+        p.direccion_entrega, 
+        p.latitude, 
+        p.longitude, 
+        u.nombre as nombre_cliente,
         (
           SELECT json_agg(json_build_object('nombre', pr.nombre, 'cantidad', dp.cantidad, 'precio', dp.precio_unidad))
           FROM detalles_pedido dp
@@ -86,6 +95,7 @@ exports.obtenerPedidos = async (req, res) => {
       JOIN usuarios u ON p.id_cliente = u.id
       ORDER BY p.fecha DESC;
     `;
+    // === FIN DEL CAMBIO ===
     const result = await db.query(query);
     res.json(result.rows);
   } catch (err) {
