@@ -1,5 +1,3 @@
-// Archivo: server.js (Versión Corregida y Final)
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -9,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- Middlewares ---
 
-// --- 1. CONFIGURACIÓN DE CORS CORREGIDA ---
+// --- 1. CONFIGURACIÓN DE CORS ---
 // Permitimos que tanto tu frontend en Render como en tu localhost se conecten
 const allowedOrigins = [
   'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
@@ -35,13 +33,12 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/productos', require('./routes/productosRoutes'));
 app.use('/api/ventas', require('./routes/ventasRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/usuarios', require('./routes/usuarios')); // <-- ESTA ES LA LÍNEA CORREGIDA
 app.use('/api/pedidos', require('./routes/pedidosRoutes'));
 app.use('/api/recompensas', require('./routes/recompensasRoutes'));
 app.use('/api/envio', require('./routes/envioRoutes'));
-
-// --- 2. RUTA DE PAGO CORREGIDA (CON 's' AL FINAL) ---
 app.use('/api/payments', require('./routes/paymentRoutes'));
+
 
 // Iniciar Servidor
 app.listen(PORT, () => {
