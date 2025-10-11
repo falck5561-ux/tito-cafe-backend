@@ -1,18 +1,36 @@
-// Archivo: routes/userRoutes.js (Versión Final Corregida)
+// Archivo: routes/usuarios.js (Versión Completa y Final)
 
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-
-// --- ¡ESTAS SON LAS LÍNEAS QUE FALTABAN! ---
 const authMiddleware = require('../middlewares/authMiddleware');
 const checkRole = require('../middlewares/roleMiddleware');
-// ------------------------------------------
 
-// Ruta pública para registrar un nuevo cliente
+//=================================================================
+// RUTAS PÚBLICAS (NO REQUIEREN TOKEN)
+//=================================================================
+// Registrar un nuevo cliente
 router.post('/register', userController.register);
 
-// Ruta para que un empleado/jefe busque a un cliente por su email
+// Iniciar sesión para cualquier usuario
+router.post('/login', userController.login);
+
+
+//=================================================================
+// RUTAS PRIVADAS (REQUIEREN TOKEN Y ROLES ESPECÍFICOS)
+//=================================================================
+
+// --- Rutas para Clientes ---
+// Obtener la dirección guardada del cliente logueado
+router.get('/mi-direccion', [authMiddleware, checkRole(['Cliente'])], userController.obtenerMiDireccion);
+
+// Actualizar la dirección guardada del cliente logueado
+router.put('/mi-direccion', [authMiddleware, checkRole(['Cliente'])], userController.actualizarMiDireccion);
+
+
+// --- Rutas para Empleados/Jefes ---
+// Buscar a un cliente por su email para ver recompensas
 router.post('/find-by-email', [authMiddleware, checkRole(['Empleado', 'Jefe'])], userController.findUserByEmail);
+
 
 module.exports = router;
