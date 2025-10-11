@@ -1,4 +1,4 @@
-// Archivo: controllers/pedidosController.js (Versión Limpia y Corregida)
+// Archivo: controllers/pedidosController.js (Versión Final y Limpia)
 
 const db = require('../config/db');
 const axios = require('axios');
@@ -17,38 +17,31 @@ exports.crearPedido = async (req, res) => {
     longitude
   } = req.body;
   
-  // Se asume que la autenticación (middleware) añade el usuario al objeto 'req'
   const id_cliente = req.user.id; 
 
-  // Validaciones de entrada
   if (!total || !productos || productos.length === 0 || !tipo_orden) {
     return res.status(400).json({ msg: 'Faltan datos para crear el pedido.' });
   }
 
-  if (tipo_orden === 'domicilio' && (!direccion_entrega || !latitude || !longitude)) {
+  if (tipo_orden === 'domicilio' && (direccion_entrega === null || latitude === null || longitude === null)) {
     return res.status(400).json({ msg: 'La dirección y coordenadas son obligatorias para la entrega a domicilio.' });
   }
 
-  const client = await db.connect(); // Obtiene un cliente del pool de conexiones
+  const client = await db.connect();
 
   try {
-    await client.query('BEGIN'); // Inicia la transacción con este cliente
+    await client.query('BEGIN');
     
-    // Consulta para insertar el pedido principal (re-escrita para limpiar caracteres)
     const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
     const pedidoValues = [total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude];
     const pedidoResult = await client.query(pedidoQuery, pedidoValues);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
-    // Bucle para insertar cada producto en la tabla de detalles
     for (const producto of productos) {
-      const cantidad = producto.cantidad || 1; 
-      // Consulta para insertar los detalles (re-escrita para limpiar caracteres)
       const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      await client.query(detalleQuery, [nuevoPedidoId, producto.id, cantidad, producto.precio]);
+      await client.query(detalleQuery, [nuevoPedidoId, producto.id, producto.cantidad, producto.precio]);
     }
 
-    // Lógica para generar recompensas
     let recompensaGenerada = false;
     const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
     const countResult = await client.query(countQuery, [id_cliente]);
@@ -61,7 +54,7 @@ exports.crearPedido = async (req, res) => {
       recompensaGenerada = true;
     }
     
-    await client.query('COMMIT'); // Finaliza la transacción exitosamente
+    await client.query('COMMIT');
     
     res.status(201).json({ 
       msg: 'Pedido realizado con éxito', 
@@ -70,11 +63,11 @@ exports.crearPedido = async (req, res) => {
     });
 
   } catch (err) {
-    await client.query('ROLLBACK'); // Revierte todos los cambios en caso de error
-    console.error("Error en crearPedido:", err.message);
+    await client.query('ROLLBACK');
+    console.error("Error en crearPedido:", err.message, err.stack);
     res.status(500).send('Error del Servidor al realizar el pedido');
   } finally {
-    client.release(); // Libera al cliente de vuelta al pool
+    client.release();
   }
 };
 
@@ -82,7 +75,6 @@ exports.crearPedido = async (req, res) => {
 // OBTENER TODOS LOS PEDIDOS (PARA EMPLEADOS)
 //=================================================================
 exports.obtenerPedidos = async (req, res) => {
-  console.log("==> INICIANDO FUNCIÓN: obtenerPedidos (para empleados)");
   try {
     const query = `
       SELECT 
@@ -97,12 +89,10 @@ exports.obtenerPedidos = async (req, res) => {
       JOIN usuarios u ON p.id_cliente = u.id
       ORDER BY p.fecha DESC;
     `;
-    console.log("--> A punto de consultar la base de datos por todos los pedidos...");
     const result = await db.query(query);
-    console.log(`<-- Consulta de todos los pedidos finalizada. Se encontraron ${result.rows.length} pedidos.`);
     res.json(result.rows);
   } catch (err) {
-    console.error("XXX ¡ERROR en obtenerPedidos!:", err.message);
+    console.error("Error en obtenerPedidos:", err.message);
     res.status(500).send('Error del Servidor al obtener pedidos');
   }
 };
@@ -111,17 +101,13 @@ exports.obtenerPedidos = async (req, res) => {
 // OBTENER PEDIDOS DE UN CLIENTE ESPECÍFICO
 //=================================================================
 exports.obtenerMisPedidos = async (req, res) => {
-  console.log("==> INICIANDO FUNCIÓN: obtenerMisPedidos (para clientes)");
   try {
     const id_cliente = req.user.id;
-    console.log(`--> Buscando pedidos para el cliente con ID: ${id_cliente}`);
     const query = 'SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden FROM pedidos p WHERE p.id_cliente = $1 ORDER BY p.fecha DESC;';
-    console.log("--> A punto de consultar la base de datos para los pedidos del cliente...");
     const result = await db.query(query, [id_cliente]);
-    console.log(`<-- Consulta de mis-pedidos finalizada. Se encontraron ${result.rows.length} pedidos.`);
     res.json(result.rows);
   } catch (err) {
-    console.error(`XXX ¡ERROR en obtenerMisPedidos para el cliente ${req.user.id}!`, err.message);
+    console.error(`Error en obtenerMisPedidos para el cliente ${req.user.id}:`, err.message);
     res.status(500).send('Error del Servidor al obtener tus pedidos');
   }
 };
