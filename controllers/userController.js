@@ -1,5 +1,3 @@
-// Archivo: controllers/userController.js (Completo y Actualizado)
-
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -27,12 +25,7 @@ exports.register = async (req, res) => {
     const newUserQuery = 'INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES ($1, $2, $3, $4) RETURNING id, rol';
     const newUser = await db.query(newUserQuery, [nombre, email, password_hash, 'Cliente']);
     
-    const payload = {
-      user: {
-        id: newUser.rows[0].id,
-        rol: newUser.rows[0].rol
-      }
-    };
+    const payload = { user: { id: newUser.rows[0].id, rol: newUser.rows[0].rol } };
 
     jwt.sign(
       payload,
@@ -69,12 +62,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ msg: 'Credenciales inválidas.' });
     }
 
-    const payload = {
-      user: {
-        id: user.id,
-        rol: user.rol
-      }
-    };
+    const payload = { user: { id: user.id, rol: user.rol } };
 
     jwt.sign(
       payload,
@@ -118,39 +106,52 @@ exports.findUserByEmail = async (req, res) => {
 };
 
 //=================================================================
-// GESTIONAR DIRECCIÓN GUARDADA DEL CLIENTE
+// GESTIONAR DIRECCIÓN GUARDADA DEL CLIENTE (VERSIÓN ACTUALIZADA)
 //=================================================================
+
+// Obtiene la dirección guardada, incluyendo la referencia
 exports.obtenerMiDireccion = async (req, res) => {
   try {
-    const result = await db.query('SELECT direccion_guardada FROM usuarios WHERE id = $1', [req.user.id]);
-    if (result.rows.length > 0) {
-      res.json(result.rows[0].direccion_guardada || null);
+    const query = 'SELECT direccion_guardada FROM usuarios WHERE id = $1';
+    const result = await db.query(query, [req.user.id]);
+
+    if (result.rows.length > 0 && result.rows[0].direccion_guardada) {
+      res.json(result.rows[0].direccion_guardada);
     } else {
-      res.status(404).json({ msg: 'Usuario no encontrado' });
+      res.json(null); // Envía null si no hay nada guardado
     }
-  } catch (err) {
-    console.error("Error en obtenerMiDireccion:", err.message);
-    res.status(500).send('Error del Servidor');
+  } catch (error) {
+    console.error("Error en obtenerMiDireccion:", error.message);
+    res.status(500).send('Error en el servidor');
   }
 };
 
+// Actualiza la dirección Y la referencia del cliente
 exports.actualizarMiDireccion = async (req, res) => {
-  const { description, lat, lng } = req.body;
+  // Se extraen todos los campos, incluyendo la referencia (puede ser null)
+  const { lat, lng, description, referencia } = req.body;
+  const id_cliente = req.user.id;
 
-  if (!description || lat === undefined || lng === undefined) {
+  if (lat === undefined || lng === undefined || !description) {
     return res.status(400).json({ msg: 'Faltan datos de la dirección.' });
   }
 
-  const direccion_guardada = { description, lat, lng };
+  // Se construye el objeto completo que se guardará en la base de datos
+  const direccionCompleta = {
+    lat,
+    lng,
+    description,
+    referencia
+  };
 
   try {
-    await db.query(
-      'UPDATE usuarios SET direccion_guardada = $1 WHERE id = $2', 
-      [JSON.stringify(direccion_guardada), req.user.id]
-    );
-    res.json({ msg: 'Dirección guardada con éxito', direccion_guardada });
-  } catch (err) {
-    console.error("Error en actualizarMiDireccion:", err.message);
-    res.status(500).send('Error del Servidor');
+    const query = 'UPDATE usuarios SET direccion_guardada = $1 WHERE id = $2 RETURNING direccion_guardada';
+    // Se envía el objeto completo a la columna de tipo JSONB
+    const result = await db.query(query, [direccionCompleta, id_cliente]);
+
+    res.json(result.rows[0].direccion_guardada);
+  } catch (error) {
+    console.error('Error al actualizar la dirección:', error);
+    res.status(500).send('Error en el servidor');
   }
 };
