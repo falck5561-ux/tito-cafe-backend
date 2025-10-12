@@ -24,12 +24,14 @@ exports.obtenerTodasPromociones = async (req, res) => {
   }
 };
 
-// CREAR UNA NUEVA PROMOCIÓN (ADMIN)
+// CREAR UNA NUEVA PROMOCIÓN (ADMIN) - VERSIÓN CORREGIDA
 exports.crearPromocion = async (req, res) => {
-  const { titulo, descripcion, precio, imagen_url, activa } = req.body;
+  // 1. Añadimos imagen_url_2 a los datos que recibimos
+  const { titulo, descripcion, precio, imagen_url, imagen_url_2, activa } = req.body;
   try {
-    const query = 'INSERT INTO promociones (titulo, descripcion, precio, imagen_url, activa) VALUES ($1, $2, $3, $4, $5) RETURNING *';
-    const values = [titulo, descripcion, precio, imagen_url, activa];
+    // 2. Actualizamos la consulta SQL para incluir el nuevo campo
+    const query = 'INSERT INTO promociones (titulo, descripcion, precio, imagen_url, imagen_url_2, activa) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
+    const values = [titulo, descripcion, precio, imagen_url, imagen_url_2, activa];
     const result = await db.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -38,13 +40,15 @@ exports.crearPromocion = async (req, res) => {
   }
 };
 
-// ACTUALIZAR UNA PROMOCIÓN (ADMIN)
+// ACTUALIZAR UNA PROMOCIÓN (ADMIN) - VERSIÓN CORREGIDA
 exports.actualizarPromocion = async (req, res) => {
   const { id } = req.params;
-  const { titulo, descripcion, precio, imagen_url, activa } = req.body;
+  // 1. Añadimos imagen_url_2 a los datos que recibimos
+  const { titulo, descripcion, precio, imagen_url, imagen_url_2, activa } = req.body;
   try {
-    const query = 'UPDATE promociones SET titulo = $1, descripcion = $2, precio = $3, imagen_url = $4, activa = $5 WHERE id = $6 RETURNING *';
-    const values = [titulo, descripcion, precio, imagen_url, activa, id];
+    // 2. Actualizamos la consulta SQL para incluir el nuevo campo
+    const query = 'UPDATE promociones SET titulo = $1, descripcion = $2, precio = $3, imagen_url = $4, imagen_url_2 = $5, activa = $6 WHERE id = $7 RETURNING *';
+    const values = [titulo, descripcion, precio, imagen_url, imagen_url_2, activa, id];
     const result = await db.query(query, values);
     if (result.rows.length === 0) {
       return res.status(404).json({ msg: 'Promoción no encontrada.' });
