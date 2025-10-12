@@ -33,11 +33,14 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/productos', require('./routes/productosRoutes'));
 app.use('/api/ventas', require('./routes/ventasRoutes'));
-app.use('/api/usuarios', require('./routes/usuarios')); // <-- ESTA ES LA LÍNEA CORREGIDA
+app.use('/api/usuarios', require('./routes/usuarios')); 
 app.use('/api/pedidos', require('./routes/pedidosRoutes'));
 app.use('/api/recompensas', require('./routes/recompensasRoutes'));
 app.use('/api/envio', require('./routes/envioRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
+
+// --- RUTA AÑADIDA PARA PROMOCIONES ---
+app.use('/api/promociones', require('./routes/promocionesRoutes'));
 
 
 // Iniciar Servidor
