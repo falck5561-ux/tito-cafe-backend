@@ -204,3 +204,18 @@ exports.calcularCostoEnvio = async (req, res) => {
     res.status(500).json({ msg: 'No se pudo calcular el costo de envío.' });
   }
 };
+
+//=================================================================
+// PURGAR TODOS LOS PEDIDOS (SOLO PARA JEFE)
+//=================================================================
+exports.purgarPedidos = async (req, res) => {
+  try {
+    // Usamos TRUNCATE porque es más eficiente y resetea los IDs.
+    // RESTART IDENTITY reinicia el contador de IDs (ej. el próximo pedido será el #1).
+    await db.query('TRUNCATE TABLE detalles_pedido, pedidos RESTART IDENTITY;');
+    res.status(200).json({ msg: 'El historial de pedidos ha sido eliminado permanentemente.' });
+  } catch (err) {
+    console.error("Error en purgarPedidos:", err.message);
+    res.status(500).send('Error del Servidor al intentar purgar los pedidos.');
+  }
+};

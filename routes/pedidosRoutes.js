@@ -3,12 +3,11 @@ const express = require('express');
 const router = express.Router();
 const pedidosController = require('../controllers/pedidosController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const checkRole = require('../middlewares/roleMiddleware');
+const checkRole = require('../middlewares/roleMiddleware'); // Usando el nombre de variable que tienes
 
 // Ruta para que un cliente cree un nuevo pedido (Solo Cliente)
 router.post('/', [authMiddleware, checkRole(['Cliente'])], pedidosController.crearPedido);
 
-// <-- NUEVA LÍNEA AÑADIDA -->
 // Ruta para calcular el costo de envío (Solo Cliente)
 router.post('/calculate-delivery-cost', [authMiddleware, checkRole(['Cliente'])], pedidosController.calcularCostoEnvio);
 
@@ -20,5 +19,9 @@ router.get('/mis-pedidos', [authMiddleware, checkRole(['Cliente'])], pedidosCont
 
 // Ruta para actualizar el estado de un pedido (Solo Empleado y Jefe)
 router.put('/:id/estado', [authMiddleware, checkRole(['Empleado', 'Jefe'])], pedidosController.actualizarEstadoPedido);
+
+// --- RUTA AÑADIDA PARA PURGAR TODOS LOS PEDIDOS (SOLO JEFE) ---
+router.delete('/todos', [authMiddleware, checkRole(['Jefe'])], pedidosController.purgarPedidos);
+
 
 module.exports = router;
