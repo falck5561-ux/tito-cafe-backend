@@ -1,4 +1,6 @@
-// Archivo: controllers/productosController.js (Versión con soporte para múltiples imágenes)
+// Archivo: controllers/productosController.js
+// VERSIÓN FINAL CON CORRECCIÓN PARA GUARDAR IMÁGENES JSON
+
 const db = require('../config/db');
 
 // Obtener todos los productos
@@ -27,28 +29,28 @@ exports.obtenerProductoPorId = async (req, res) => {
   }
 };
 
-// Crear un nuevo producto (con soporte para múltiples imágenes)
+// Crear un nuevo producto (con corrección para JSON)
 exports.crearProducto = async (req, res) => {
-  // CAMBIO: Se reemplaza 'imagen_url' por 'imagenes' (un arreglo)
   const { nombre, descripcion, precio, stock, categoria, imagenes, descuento_porcentaje, en_oferta } = req.body;
   if (!nombre || !precio) {
     return res.status(400).json({ msg: 'El nombre y el precio son campos requeridos.' });
   }
   try {
-    // CAMBIO: Se actualiza la consulta SQL para usar la columna 'imagenes'
     const query = `
       INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagenes, descuento_porcentaje, en_oferta) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING *`;
     
+    // CORRECCIÓN: Convertimos explícitamente el arreglo a un string JSON.
+    const imagenesJson = JSON.stringify(imagenes || []);
+
     const values = [
       nombre,
       descripcion || null,
       precio,
       stock || 0,
       categoria || null,
-      // CAMBIO: Se pasa el arreglo de imágenes. Si no existe, se guarda un arreglo vacío '[]'
-      imagenes || '[]',
+      imagenesJson, // Se pasa el string JSON
       descuento_porcentaje || 0,
       en_oferta || false
     ];
@@ -60,23 +62,24 @@ exports.crearProducto = async (req, res) => {
   }
 };
 
-// Actualizar un producto existente (con soporte para múltiples imágenes)
+// Actualizar un producto existente (con corrección para JSON)
 exports.actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    // CAMBIO: Se reemplaza 'imagen_url' por 'imagenes' (un arreglo)
     const { nombre, descripcion, precio, stock, categoria, imagenes, descuento_porcentaje, en_oferta } = req.body;
 
     if (nombre === undefined || precio === undefined) {
       return res.status(400).json({ msg: 'El nombre y el precio no pueden estar vacíos.' });
     }
 
-    // CAMBIO: Se actualiza la consulta SQL para usar la columna 'imagenes'
     const query = `
       UPDATE productos 
       SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagenes = $6, descuento_porcentaje = $7, en_oferta = $8 
       WHERE id = $9 
       RETURNING *`;
+    
+    // CORRECCIÓN: Convertimos explícitamente el arreglo a un string JSON.
+    const imagenesJson = JSON.stringify(imagenes || []);
     
     const values = [
       nombre,
@@ -84,8 +87,7 @@ exports.actualizarProducto = async (req, res) => {
       precio,
       stock,
       categoria,
-      // CAMBIO: Se pasa el arreglo de imágenes
-      imagenes,
+      imagenesJson, // Se pasa el string JSON
       descuento_porcentaje,
       en_oferta,
       id
@@ -103,7 +105,7 @@ exports.actualizarProducto = async (req, res) => {
   }
 };
 
-// Eliminar un producto (Sin cambios, funciona igual)
+// Eliminar un producto
 exports.eliminarProducto = async (req, res) => {
   try {
     const { id } = req.params;
