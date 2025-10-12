@@ -1,28 +1,32 @@
 // Archivo: middlewares/authMiddleware.js
+// VERSIÓN CORREGIDA PARA MANEJAR "BEARER TOKEN"
+
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-// Este es nuestro "guardia de seguridad"
 module.exports = function(req, res, next) {
-  // 1. Obtener el token del encabezado de la petición
-  const token = req.header('x-auth-token');
+    // 1. Obtener la cabecera 'Authorization'
+    const authHeader = req.header('Authorization');
 
-  // 2. Si no hay token, no hay acceso
-  if (!token) {
-    return res.status(401).json({ msg: 'No hay token, permiso denegado' });
-  }
+    // 2. Verificar que la cabecera exista
+    if (!authHeader) {
+        return res.status(401).json({ msg: 'No hay token, permiso no válido' });
+    }
 
-  // 3. Si hay un token, verificar que sea válido
-  try {
-    // Usamos la misma clave secreta para decodificarlo
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Si es válido, guardamos los datos del usuario en el objeto de la petición
-    req.user = decoded.user;
+    // 3. Verificar que el formato sea 'Bearer <token>'
+    if (!authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ msg: 'Formato de token no válido' });
+    }
     
-    // Le decimos a la petición que puede continuar
-    next();
-  } catch (err) {
-    res.status(401).json({ msg: 'El token no es válido' });
-  }
+    // 4. Extraer el token (quitando el prefijo 'Bearer ' que tiene 7 caracteres)
+    const token = authHeader.substring(7);
+
+    // 5. Verificar el token extraído
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded.user;
+        next();
+    } catch (err) {
+        res.status(401).json({ msg: 'Token no es válido' });
+    }
 };
