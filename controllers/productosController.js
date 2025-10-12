@@ -1,4 +1,4 @@
-// Archivo: controllers/productosController.js (Versión Final y Verificada)
+// Archivo: controllers/productosController.js (Versión con soporte para múltiples imágenes)
 const db = require('../config/db');
 
 // Obtener todos los productos
@@ -27,26 +27,29 @@ exports.obtenerProductoPorId = async (req, res) => {
   }
 };
 
-// Crear un nuevo producto (con campos de descripción y oferta)
+// Crear un nuevo producto (con soporte para múltiples imágenes)
 exports.crearProducto = async (req, res) => {
-  const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
+  // CAMBIO: Se reemplaza 'imagen_url' por 'imagenes' (un arreglo)
+  const { nombre, descripcion, precio, stock, categoria, imagenes, descuento_porcentaje, en_oferta } = req.body;
   if (!nombre || !precio) {
     return res.status(400).json({ msg: 'El nombre y el precio son campos requeridos.' });
   }
   try {
+    // CAMBIO: Se actualiza la consulta SQL para usar la columna 'imagenes'
     const query = `
-      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta) 
+      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagenes, descuento_porcentaje, en_oferta) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING *`;
-    // Asignamos valores por defecto si no vienen en la petición
+    
     const values = [
-      nombre, 
-      descripcion || null, 
-      precio, 
-      stock || 0, 
-      categoria || null, 
-      imagen_url || null, 
-      descuento_porcentaje || 0, 
+      nombre,
+      descripcion || null,
+      precio,
+      stock || 0,
+      categoria || null,
+      // CAMBIO: Se pasa el arreglo de imágenes. Si no existe, se guarda un arreglo vacío '[]'
+      imagenes || '[]',
+      descuento_porcentaje || 0,
       en_oferta || false
     ];
     const result = await db.query(query, values);
@@ -57,33 +60,35 @@ exports.crearProducto = async (req, res) => {
   }
 };
 
-// Actualizar un producto existente (con campos de descripción y oferta)
+// Actualizar un producto existente (con soporte para múltiples imágenes)
 exports.actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
+    // CAMBIO: Se reemplaza 'imagen_url' por 'imagenes' (un arreglo)
+    const { nombre, descripcion, precio, stock, categoria, imagenes, descuento_porcentaje, en_oferta } = req.body;
 
-    // Verificamos que los campos necesarios no sean nulos
     if (nombre === undefined || precio === undefined) {
-        return res.status(400).json({ msg: 'El nombre y el precio no pueden estar vacíos.' });
+      return res.status(400).json({ msg: 'El nombre y el precio no pueden estar vacíos.' });
     }
 
+    // CAMBIO: Se actualiza la consulta SQL para usar la columna 'imagenes'
     const query = `
       UPDATE productos 
-      SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagen_url = $6, descuento_porcentaje = $7, en_oferta = $8 
+      SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagenes = $6, descuento_porcentaje = $7, en_oferta = $8 
       WHERE id = $9 
       RETURNING *`;
     
     const values = [
-        nombre, 
-        descripcion, 
-        precio, 
-        stock, 
-        categoria, 
-        imagen_url, 
-        descuento_porcentaje, 
-        en_oferta, 
-        id
+      nombre,
+      descripcion,
+      precio,
+      stock,
+      categoria,
+      // CAMBIO: Se pasa el arreglo de imágenes
+      imagenes,
+      descuento_porcentaje,
+      en_oferta,
+      id
     ];
     
     const result = await db.query(query, values);
@@ -98,7 +103,7 @@ exports.actualizarProducto = async (req, res) => {
   }
 };
 
-// Eliminar un producto
+// Eliminar un producto (Sin cambios, funciona igual)
 exports.eliminarProducto = async (req, res) => {
   try {
     const { id } = req.params;
