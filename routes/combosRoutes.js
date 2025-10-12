@@ -1,3 +1,6 @@
+// Ruta: TITO-CAFE-BACKEND/routes/combosRoutes.js
+// VERSIÓN CORREGIDA
+
 const express = require('express');
 const router = express.Router();
 const promocionesController = require('../controllers/combosController');
@@ -5,7 +8,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
 // RUTA PÚBLICA: Para que los clientes vean las promociones activas en el menú.
-router.get('/', promocionesController.obtenerPromocionesActivas);
+// --- ESTA ES LA LÍNEA CORREGIDA ---
+router.get('/activas', promocionesController.obtenerPromocionesActivas);
 
 // --- RUTAS PROTEGIDAS (Solo para el rol 'Jefe') ---
 
