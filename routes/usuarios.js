@@ -1,4 +1,4 @@
-// Archivo: routes/usuarios.js (Versión Completa y Final)
+// Archivo: routes/usuarios.js (Código Completo)
 
 const express = require('express');
 const router = express.Router();
