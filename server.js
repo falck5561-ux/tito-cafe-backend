@@ -39,8 +39,9 @@ app.use('/api/recompensas', require('./routes/recompensasRoutes'));
 app.use('/api/envio', require('./routes/envioRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 
-// --- RUTA AÑADIDA PARA PROMOCIONES ---
-app.use('/api/promociones', require('./routes/combosRoutes'));
+// --- RUTA CORREGIDA PARA COMBOS ---
+// Se cambió de '/api/promociones' a '/api/combos' para que coincida con el frontend
+app.use('/api/combos', require('./routes/combosRoutes'));
 
 
 // Iniciar Servidor
