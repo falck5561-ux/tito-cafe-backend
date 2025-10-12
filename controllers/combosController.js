@@ -1,8 +1,12 @@
+// Ruta: TITO-CAFE-BACKEND/controllers/combosController.js
+// VERSIÓN MEJORADA CON IMÁGENES MÚLTIPLES Y DESCUENTOS
+
 const db = require('../config/db');
 
-// OBTENER SOLO PROMOCIONES ACTIVAS (PARA CLIENTES)
+// OBTENER SOLO COMBOS ACTIVOS (PARA CLIENTES)
 exports.obtenerPromocionesActivas = async (req, res) => {
   try {
+    // La consulta no cambia, ya que trae todas las columnas
     const query = 'SELECT * FROM promociones WHERE activa = true ORDER BY id DESC';
     const result = await db.query(query);
     res.json(result.rows);
@@ -12,7 +16,7 @@ exports.obtenerPromocionesActivas = async (req, res) => {
   }
 };
 
-// OBTENER TODAS LAS PROMOCIONES (PARA ADMIN)
+// OBTENER TODOS LOS COMBOS (PARA ADMIN)
 exports.obtenerTodasPromociones = async (req, res) => {
   try {
     const query = 'SELECT * FROM promociones ORDER BY id DESC';
@@ -24,14 +28,18 @@ exports.obtenerTodasPromociones = async (req, res) => {
   }
 };
 
-// CREAR UNA NUEVA PROMOCIÓN (ADMIN) - VERSIÓN CORREGIDA
+// CREAR UN NUEVO COMBO (ADMIN)
 exports.crearPromocion = async (req, res) => {
-  // 1. Añadimos imagen_url_2 a los datos que recibimos
-  const { titulo, descripcion, precio, imagen_url, imagen_url_2, activa } = req.body;
+  // Añadimos los nuevos campos que vienen del frontend
+  const { titulo, descripcion, precio, imagenes, activa, en_oferta, descuento_porcentaje } = req.body;
   try {
-    // 2. Actualizamos la consulta SQL para incluir el nuevo campo
-    const query = 'INSERT INTO promociones (titulo, descripcion, precio, imagen_url, imagen_url_2, activa) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
-    const values = [titulo, descripcion, precio, imagen_url, imagen_url_2, activa];
+    const query = `
+      INSERT INTO promociones (titulo, descripcion, precio, imagenes, activa, en_oferta, descuento_porcentaje) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
+    
+    const imagenesJson = JSON.stringify(imagenes || []);
+    const values = [titulo, descripcion, precio, imagenesJson, activa, en_oferta || false, descuento_porcentaje || 0];
+    
     const result = await db.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -40,18 +48,22 @@ exports.crearPromocion = async (req, res) => {
   }
 };
 
-// ACTUALIZAR UNA PROMOCIÓN (ADMIN) - VERSIÓN CORREGIDA
+// ACTUALIZAR UN COMBO (ADMIN)
 exports.actualizarPromocion = async (req, res) => {
   const { id } = req.params;
-  // 1. Añadimos imagen_url_2 a los datos que recibimos
-  const { titulo, descripcion, precio, imagen_url, imagen_url_2, activa } = req.body;
+  const { titulo, descripcion, precio, imagenes, activa, en_oferta, descuento_porcentaje } = req.body;
   try {
-    // 2. Actualizamos la consulta SQL para incluir el nuevo campo
-    const query = 'UPDATE promociones SET titulo = $1, descripcion = $2, precio = $3, imagen_url = $4, imagen_url_2 = $5, activa = $6 WHERE id = $7 RETURNING *';
-    const values = [titulo, descripcion, precio, imagen_url, imagen_url_2, activa, id];
+    const query = `
+      UPDATE promociones 
+      SET titulo = $1, descripcion = $2, precio = $3, imagenes = $4, activa = $5, en_oferta = $6, descuento_porcentaje = $7 
+      WHERE id = $8 RETURNING *`;
+      
+    const imagenesJson = JSON.stringify(imagenes || []);
+    const values = [titulo, descripcion, precio, imagenesJson, activa, en_oferta, descuento_porcentaje, id];
+    
     const result = await db.query(query, values);
     if (result.rows.length === 0) {
-      return res.status(404).json({ msg: 'Promoción no encontrada.' });
+      return res.status(404).json({ msg: 'Combo no encontrado.' });
     }
     res.json(result.rows[0]);
   } catch (err) {
@@ -60,16 +72,15 @@ exports.actualizarPromocion = async (req, res) => {
   }
 };
 
-// ELIMINAR UNA PROMOCIÓN (ADMIN)
+// ELIMINAR UN COMBO (ADMIN)
 exports.eliminarPromocion = async (req, res) => {
   const { id } = req.params;
   try {
-    const query = 'DELETE FROM promociones WHERE id = $1';
-    const result = await db.query(query, [id]);
+    const result = await db.query('DELETE FROM promociones WHERE id = $1', [id]);
     if (result.rowCount === 0) {
-      return res.status(404).json({ msg: 'Promoción no encontrada.' });
+      return res.status(404).json({ msg: 'Combo no encontrado.' });
     }
-    res.json({ msg: 'Promoción eliminada.' });
+    res.json({ msg: 'Combo eliminado.' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Error del Servidor');
