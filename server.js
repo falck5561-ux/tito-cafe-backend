@@ -40,7 +40,7 @@ app.use('/api/envio', require('./routes/envioRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 
 // --- RUTA AÑADIDA PARA PROMOCIONES ---
-app.use('/api/promociones', require('./routes/promocionesRoutes'));
+app.use('/api/promociones', require('./routes/combosRoutes'));
 
 
 // Iniciar Servidor

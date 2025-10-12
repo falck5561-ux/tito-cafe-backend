@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const db = require('../../config/db');
 
 // OBTENER SOLO PROMOCIONES ACTIVAS (PARA CLIENTES)
 exports.obtenerPromocionesActivas = async (req, res) => {

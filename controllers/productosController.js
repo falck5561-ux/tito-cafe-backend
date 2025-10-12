@@ -1,4 +1,4 @@
-// Archivo: controllers/productosController.js (Versión Completa y Corregida con Ofertas)
+// Archivo: controllers/productosController.js (Versión Final y Corregida)
 const db = require('../config/db');
 
 // Obtener todos los productos
@@ -27,18 +27,18 @@ exports.obtenerProductoPorId = async (req, res) => {
   }
 };
 
-// Crear un nuevo producto (con campos de descripción y oferta)
+// Crear un nuevo producto (con campos de descripción y oferta por porcentaje)
 exports.crearProducto = async (req, res) => {
-  const { nombre, descripcion, precio, stock, categoria, imagen_url, precio_oferta, en_oferta } = req.body;
+  const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
   if (!nombre || !precio) {
     return res.status(400).json({ msg: 'Nombre y precio son requeridos' });
   }
   try {
     const query = `
-      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, precio_oferta, en_oferta) 
+      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING *`;
-    const values = [nombre, descripcion, precio, stock || 0, categoria, imagen_url, precio_oferta, en_oferta || false];
+    const values = [nombre, descripcion, precio, stock || 0, categoria, imagen_url, descuento_porcentaje || 0, en_oferta || false];
     const result = await db.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -47,17 +47,17 @@ exports.crearProducto = async (req, res) => {
   }
 };
 
-// Actualizar un producto existente (con campos de descripción y oferta)
+// Actualizar un producto existente (con campos de descripción y oferta por porcentaje)
 exports.actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, precio, stock, categoria, imagen_url, precio_oferta, en_oferta } = req.body;
+    const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
     const query = `
       UPDATE productos 
-      SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagen_url = $6, precio_oferta = $7, en_oferta = $8 
+      SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagen_url = $6, descuento_porcentaje = $7, en_oferta = $8 
       WHERE id = $9 
       RETURNING *`;
-    const values = [nombre, descripcion, precio, stock, categoria, imagen_url, precio_oferta, en_oferta, id];
+    const values = [nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta, id];
     const result = await db.query(query, values);
     if (result.rows.length === 0) {
       return res.status(404).json({ msg: 'Producto no encontrado' });

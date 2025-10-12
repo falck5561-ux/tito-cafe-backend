@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const promocionesController = require('../controllers/promocionesController');
+const promocionesController = require('../controllers/controllers/combosController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
