@@ -14,4 +14,6 @@ router.get('/disponibles', [authMiddleware, checkRole(['Empleado', 'Jefe'])], re
 // Ruta para que un empleado/jefe marque un cupón como utilizado por un cliente
 router.put('/:id/utilizar', [authMiddleware, checkRole(['Empleado', 'Jefe'])], recompensasController.marcarRecompensaUtilizada);
 
+router.post('/buscar-por-email', [authMiddleware, checkRole(['Empleado', 'Jefe'])], recompensasController.buscarRecompensasPorEmail);
+
 module.exports = router;
