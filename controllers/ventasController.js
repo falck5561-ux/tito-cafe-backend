@@ -6,6 +6,9 @@ exports.crearVenta = async (req, res) => {
   const { total, metodo_pago, productos, clienteId, recompensaUsadaId } = req.body;
   const id_empleado = req.user.id; // El ID del empleado viene del token de autenticación
 
+  console.log("[VENTA] Iniciando registro de venta...");
+  console.log(`[VENTA] Cliente ID: ${clienteId}, Recompensa ID: ${recompensaUsadaId}`);
+
   if ((!total && total !== 0) || !metodo_pago || !productos || productos.length === 0) {
     return res.status(400).json({ msg: 'Todos los campos son requeridos' });
   }
@@ -15,38 +18,42 @@ exports.crearVenta = async (req, res) => {
     await db.query('BEGIN');
 
     // 1. Insertamos la venta principal y obtenemos el ID de la nueva venta
-    // Se añade 'cliente_id' para registrar qué cliente hizo la compra, si aplica.
+    console.log("[VENTA] PASO 1: Insertando en la tabla 'ventas'...");
     const ventaQuery = 'INSERT INTO ventas (total, metodo_pago, id_empleado, cliente_id) VALUES ($1, $2, $3, $4) RETURNING id';
     const ventaResult = await db.query(ventaQuery, [total, metodo_pago, id_empleado, clienteId]);
     const nuevaVentaId = ventaResult.rows[0].id;
+    console.log(`[VENTA] PASO 1: Venta principal registrada con ID: ${nuevaVentaId}`);
+
 
     // 2. Insertamos cada producto del ticket en la tabla de detalles
-    // CORRECCIÓN: Ahora se usa la cantidad correcta que viene del frontend
+    console.log("[VENTA] PASO 2: Insertando detalles de la venta...");
     for (const producto of productos) {
       const detalleQuery = 'INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      // Usamos producto.precio, que ya viene con el descuento o en 0.00 si es recompensa
       await db.query(detalleQuery, [nuevaVentaId, producto.id, producto.cantidad, producto.precio]);
     }
+    console.log("[VENTA] PASO 2: Detalles de venta registrados.");
+
 
     // 3. ¡PASO CLAVE! Si se usó una recompensa, la registramos como canjeada
     if (clienteId && recompensaUsadaId) {
-      console.log(`[REWARDS] Registrando recompensa usada. Cliente ID: ${clienteId}, Recompensa ID: ${recompensaUsadaId}`);
+      console.log("[VENTA] PASO 3: Registrando recompensa usada...");
       const recompensaQuery = `
           INSERT INTO usuarios_recompensas (usuario_id, recompensa_id, venta_id) 
           VALUES ($1, $2, $3);
       `;
       await db.query(recompensaQuery, [clienteId, recompensaUsadaId, nuevaVentaId]);
-      console.log("[REWARDS] Recompensa registrada exitosamente.");
+      console.log("[VENTA] PASO 3: Recompensa registrada exitosamente.");
     }
 
     // Si todo salió bien, confirmamos los cambios en la base de datos
     await db.query('COMMIT');
+    console.log("[VENTA] Transacción completada (COMMIT).");
     res.status(201).json({ msg: 'Venta registrada con éxito', ventaId: nuevaVentaId });
 
   } catch (err) {
     // Si algo falla, revertimos todos los cambios para no dejar datos corruptos
     await db.query('ROLLBACK');
-    console.error("Error al registrar la venta:", err.message);
+    console.error("[VENTA] ERROR FATAL, se hizo ROLLBACK. Causa:", err.message);
     res.status(500).send('Error del Servidor al registrar la venta');
   }
 };
