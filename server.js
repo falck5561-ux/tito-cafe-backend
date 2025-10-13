@@ -7,8 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- Middlewares ---
 
-// --- 1. CONFIGURACIÓN DE CORS MEJORADA ---
-// Lista de orígenes permitidos
+// --- CONFIGURACIÓN DE CORS ---
 const allowedOrigins = [
   'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
   'http://localhost:5173'                   // Tu sitio en desarrollo local
@@ -16,26 +15,22 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permite peticiones sin origen (como Postman) y las de la lista blanca
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  // Habilitamos explícitamente las credenciales y los headers necesarios para el login
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
-// Habilitamos la respuesta a las peticiones "preflight" que el navegador envía
-app.options('*', cors(corsOptions));
-// Aplicamos la configuración de CORS a todas las rutas
+// Aplicamos la configuración de CORS a todas las rutas.
+// Esta única línea es suficiente para manejar todo, incluyendo las peticiones preflight.
 app.use(cors(corsOptions));
 
-// --- 2. Middleware para parsear JSON ---
-// (Esto debe ir DESPUÉS de la configuración de CORS)
+// Middleware para parsear JSON (debe ir después de CORS)
 app.use(express.json());
 
 // --- Rutas ---
