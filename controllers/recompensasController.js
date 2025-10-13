@@ -1,10 +1,46 @@
 const db = require('../config/db');
 
-// --- TU LÓGICA DE RECOMPENSAS (SIN CAMBIOS) ---
-exports.obtenerMisRecompensas = async (req, res) => { /* ... tu código existente ... */ };
-exports.obtenerRecompensasDisponibles = async (req, res) => { /* ... tu código existente ... */ };
-exports.marcarRecompensaUtilizada = async (req, res) => { /* ... tu código existente ... */ };
+// --- OTRAS FUNCIONES (SE MANTIENEN IGUAL) ---
+exports.obtenerMisRecompensas = async (req, res) => {
+  try {
+    const query = `
+      SELECT r.* FROM recompensas r
+      JOIN usuarios_recompensas ur ON r.id = ur.recompensa_id
+      WHERE ur.usuario_id = $1 AND ur.utilizado = false
+    `;
+    const { rows } = await db.query(query, [req.user.id]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener mis recompensas:', error.message);
+    res.json([]);
+  }
+};
 
+exports.obtenerRecompensasDisponibles = async (req, res) => {
+  try {
+    const query = 'SELECT * FROM recompensas';
+    const { rows } = await db.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener las recompensas disponibles:', error.message);
+    res.status(500).json({ msg: 'Error interno del servidor.' });
+  }
+};
+
+exports.marcarRecompensaUtilizada = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = 'UPDATE usuarios_recompensas SET utilizado = true, fecha_uso = NOW() WHERE id = $1 RETURNING *';
+    const { rows } = await db.query(query, [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ msg: 'La recompensa no fue encontrada.' });
+    }
+    res.json({ msg: 'Recompensa marcada como utilizada con éxito.', recompensa: rows[0] });
+  } catch (error) {
+    console.error('Error al marcar la recompensa:', error.message);
+    res.status(500).json({ msg: 'Error interno del servidor.' });
+  }
+};
 
 // --- FUNCIÓN DE BÚSQUEDA CORREGIDA Y MEJORADA ---
 exports.buscarRecompensasPorEmail = async (req, res) => {
@@ -30,16 +66,18 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
     const comprasResult = await db.query(comprasQuery, [cliente.id]);
     const totalCompras = parseInt(comprasResult.rows[0].count, 10);
 
-    // 3. Contar recompensas de café gratis ya usadas.
+    // 3. Contar recompensas de café gratis ya usadas (de forma segura).
     let recompensasUsadas = 0;
     try {
       // Esta consulta puede fallar si no tienes la tabla 'usuarios_recompensas'.
-      // Si falla, asumimos que no se ha usado ninguna recompensa.
       // IMPORTANTE: Revisa que la tabla se llame 'usuarios_recompensas'.
       const usadasQuery = 'SELECT COUNT(*) FROM usuarios_recompensas WHERE usuario_id = $1 AND recompensa_id = 1';
       const usadasResult = await db.query(usadasQuery, [cliente.id]);
-      recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
+      if (usadasResult.rows.length > 0) {
+        recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
+      }
     } catch (e) {
+      // Si la tabla no existe, no detenemos el servidor.
       console.log("Nota: No se encontró la tabla 'usuarios_recompensas'. Se asumirá 0 recompensas usadas.");
     }
 
@@ -63,7 +101,8 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error Crítico al buscar recompensas por email:', error.message);
-    res.status(500).json({ msg: 'Error interno del servidor. Revisa los nombres de las tablas y columnas en el controlador.' });
+    // Este error SÍ es crítico, probablemente porque la tabla 'usuarios' o 'ventas' tiene un nombre incorrecto.
+    console.error('Error Crítico al buscar recompensas. Revisa los nombres de las tablas y columnas.', error.message);
+    res.status(500).json({ msg: 'Error interno del servidor.' });
   }
 };
