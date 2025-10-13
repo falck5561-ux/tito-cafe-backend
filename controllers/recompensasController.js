@@ -1,41 +1,23 @@
-// Archivo: controllers/recompensasController.js
+// --- COPIA Y PEGA ESTA FUNCIÓN DENTRO DE TU ARCHIVO recompensasController.js ---
 
-const db = require('../config/db');
+// Asegúrate de que el modelo Recompensa esté importado al inicio del archivo.
+// Deberías tener una línea como esta: const { Recompensa } = require('../models');
 
-// Obtiene las recompensas de un cliente (esta ya la tenías)
-exports.obtenerMisRecompensas = async (req, res) => {
+exports.obtenerRecompensasDisponibles = async (req, res) => {
   try {
-    const id_cliente = req.user.id;
-    const query = `
-      SELECT id, descripcion, fecha_creacion 
-      FROM recompensas 
-      WHERE id_cliente = $1 AND utilizado = FALSE 
-      ORDER BY fecha_creacion DESC;
-    `;
-    const result = await db.query(query, [id_cliente]);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Error del Servidor');
-  }
-};
+    // Esta consulta busca todas las recompensas.
+    // Puedes ajustarla si necesitas filtrar solo las que estén activas
+    // o sean de un tipo específico para el punto de venta.
+    const recompensas = await Recompensa.findAll({
+      // Ejemplo de un filtro que podrías agregar:
+      // where: {
+      //   activo: true
+      // }
+    });
 
-// --- NUEVA FUNCIÓN ---
-// Marca una recompensa como utilizada (para empleados/jefes)
-exports.marcarRecompensaUtilizada = async (req, res) => {
-  const { id } = req.params; // El ID de la recompensa
-
-  try {
-    const query = 'UPDATE recompensas SET utilizado = TRUE WHERE id = $1 RETURNING *';
-    const result = await db.query(query, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ msg: 'Recompensa no encontrada.' });
-    }
-
-    res.json({ msg: 'Recompensa marcada como utilizada.', recompensa: result.rows[0] });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Error del Servidor');
+    res.json(recompensas);
+  } catch (error) {
+    console.error('Error al obtener las recompensas disponibles:', error);
+    res.status(500).json({ msg: 'Error interno del servidor.' });
   }
 };
