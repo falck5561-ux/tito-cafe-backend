@@ -1,35 +1,55 @@
-// Archivo: controllers/ventasController.js (Versión Final con TODO incluido)
-
 const db = require('../config/db');
 
-// Crear una nueva venta (para el POS)
+// --- FUNCIÓN 'crearVenta' CORREGIDA Y COMPLETADA ---
 exports.crearVenta = async (req, res) => {
-  const { total, metodo_pago, productos } = req.body;
-  const id_empleado = req.user.id; 
+  // Obtenemos los datos del frontend, incluyendo los nuevos IDs de recompensa
+  const { total, metodo_pago, productos, clienteId, recompensaUsadaId } = req.body;
+  const id_empleado = req.user.id; // El ID del empleado viene del token de autenticación
 
-  if (!total || !metodo_pago || !productos || productos.length === 0) {
+  if (!total && total !== 0 || !metodo_pago || !productos || productos.length === 0) {
     return res.status(400).json({ msg: 'Todos los campos son requeridos' });
   }
 
   try {
+    // Iniciamos una transacción para asegurar que todas las operaciones se completen
     await db.query('BEGIN');
-    const ventaQuery = 'INSERT INTO ventas (total, metodo_pago, id_empleado) VALUES ($1, $2, $3) RETURNING id';
-    const ventaResult = await db.query(ventaQuery, [total, metodo_pago, id_empleado]);
+
+    // 1. Insertamos la venta principal y obtenemos el ID de la nueva venta
+    const ventaQuery = 'INSERT INTO ventas (total, metodo_pago, id_empleado, cliente_id) VALUES ($1, $2, $3, $4) RETURNING id';
+    const ventaResult = await db.query(ventaQuery, [total, metodo_pago, id_empleado, clienteId]);
     const nuevaVentaId = ventaResult.rows[0].id;
 
+    // 2. Insertamos cada producto del ticket en la tabla de detalles
     for (const producto of productos) {
       const detalleQuery = 'INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      await db.query(detalleQuery, [nuevaVentaId, producto.id, 1, producto.precio]);
+      // Usamos producto.precio, que ya viene con el descuento o en 0.00 si es recompensa
+      await db.query(detalleQuery, [nuevaVentaId, producto.id, producto.cantidad, producto.precio]);
     }
 
+    // 3. ¡PASO CLAVE! Si se usó una recompensa, la registramos como canjeada
+    if (clienteId && recompensaUsadaId) {
+      console.log(`[REWARDS] Registrando recompensa usada. Cliente ID: ${clienteId}, Recompensa ID: ${recompensaUsadaId}`);
+      const recompensaQuery = `
+          INSERT INTO usuarios_recompensas (usuario_id, recompensa_id, venta_id) 
+          VALUES ($1, $2, $3);
+      `;
+      await db.query(recompensaQuery, [clienteId, recompensaUsadaId, nuevaVentaId]);
+      console.log("[REWARDS] Recompensa registrada exitosamente.");
+    }
+
+    // Si todo salió bien, confirmamos los cambios en la base de datos
     await db.query('COMMIT');
     res.status(201).json({ msg: 'Venta registrada con éxito', ventaId: nuevaVentaId });
+
   } catch (err) {
+    // Si algo falla, revertimos todos los cambios para no dejar datos corruptos
     await db.query('ROLLBACK');
-    console.error(err.message);
+    console.error("Error al registrar la venta:", err.message);
     res.status(500).send('Error del Servidor al registrar la venta');
   }
 };
+
+// --- OTRAS FUNCIONES (SE MANTIENEN IGUAL) ---
 
 // Obtener un reporte de ventas general (para el Jefe)
 exports.obtenerReporteVentas = async (req, res) => {
@@ -46,16 +66,15 @@ exports.obtenerReporteVentas = async (req, res) => {
   }
 };
 
-// --- FUNCIÓN CORREGIDA PARA EL REPORTE POR PRODUCTO ---
+// Obtener el reporte por producto
 exports.obtenerReportePorProducto = async (req, res) => {
-  const { inicio, fin } = req.query; // Obtiene las fechas de los parámetros de la URL
+  const { inicio, fin } = req.query; 
 
   if (!inicio || !fin) {
     return res.status(400).json({ msg: 'Las fechas de inicio y fin son requeridas.' });
   }
 
   try {
-    // La consulta SQL que tenías estaba casi bien, solo ajustamos la tabla de detalles
     const reporteQuery = `
       SELECT 
         pr.id, 
