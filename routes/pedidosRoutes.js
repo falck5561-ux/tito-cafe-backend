@@ -1,27 +1,60 @@
-// Archivo: routes/pedidosRoutes.js (Completo y Actualizado)
+// routes/pedidosRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const pedidosController = require('../controllers/pedidosController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const checkRole = require('../middlewares/roleMiddleware'); // Usando el nombre de variable que tienes
+const roleMiddleware = require('../middlewares/roleMiddleware');
 
-// Ruta para que un cliente cree un nuevo pedido (Solo Cliente)
-router.post('/', [authMiddleware, checkRole(['Cliente'])], pedidosController.crearPedido);
+/*==================================
+=            RUTAS PARA CLIENTES            =
+==================================*/
+// POST /api/pedidos -> Para crear un nuevo pedido
+router.post(
+    '/',
+    [authMiddleware, roleMiddleware(['Cliente'])],
+    pedidosController.crearPedido
+);
 
-// Ruta para calcular el costo de envío (Solo Cliente)
-router.post('/calculate-delivery-cost', [authMiddleware, checkRole(['Cliente'])], pedidosController.calcularCostoEnvio);
+// GET /api/pedidos/mis-pedidos -> Para ver su historial de pedidos
+router.get(
+    '/mis-pedidos',
+    [authMiddleware, roleMiddleware(['Cliente'])],
+    pedidosController.obtenerMisPedidos
+);
 
-// Ruta para ver todos los pedidos (Solo Empleado y Jefe)
-router.get('/', [authMiddleware, checkRole(['Empleado', 'Jefe'])], pedidosController.obtenerPedidos);
+// POST /api/pedidos/calcular-envio -> Para calcular el costo de envío
+router.post(
+    '/calcular-envio',
+    [authMiddleware, roleMiddleware(['Cliente'])],
+    pedidosController.calcularCostoEnvio
+);
 
-// Ruta para que un cliente vea sus propios pedidos (Solo Cliente)
-router.get('/mis-pedidos', [authMiddleware, checkRole(['Cliente'])], pedidosController.obtenerMisPedidos);
+/*=============================================
+=            RUTAS PARA EMPLEADOS Y JEFES            =
+=============================================*/
+// GET /api/pedidos -> Para ver TODOS los pedidos
+router.get(
+    '/',
+    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
+    pedidosController.obtenerPedidos
+);
 
-// Ruta para actualizar el estado de un pedido (Solo Empleado y Jefe)
-router.put('/:id/estado', [authMiddleware, checkRole(['Empleado', 'Jefe'])], pedidosController.actualizarEstadoPedido);
+// PATCH /api/pedidos/:id/estado -> Para actualizar el estado de un pedido
+router.patch(
+    '/:id/estado',
+    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
+    pedidosController.actualizarEstadoPedido
+);
 
-// --- RUTA AÑADIDA PARA PURGAR TODOS LOS PEDIDOS (SOLO JEFE) ---
-router.delete('/todos', [authMiddleware, checkRole(['Jefe'])], pedidosController.purgarPedidos);
-
+/*========================================
+=            RUTA SOLO PARA JEFE            =
+========================================*/
+// DELETE /api/pedidos/purgar -> Para borrar PERMANENTEMENTE todos los pedidos
+router.delete(
+    '/purgar',
+    [authMiddleware, roleMiddleware(['JEFE'])],
+    pedidosController.purgarPedidos
+);
 
 module.exports = router;
