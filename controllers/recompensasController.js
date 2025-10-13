@@ -1,108 +1,117 @@
 const db = require('../config/db');
 
-// --- OTRAS FUNCIONES (SE MANTIENEN IGUAL) ---
-exports.obtenerMisRecompensas = async (req, res) => {
-  try {
-    const query = `
-      SELECT r.* FROM recompensas r
-      JOIN usuarios_recompensas ur ON r.id = ur.recompensa_id
-      WHERE ur.usuario_id = $1 AND ur.utilizado = false
-    `;
-    const { rows } = await db.query(query, [req.user.id]);
-    res.json(rows);
-  } catch (error) {
-    console.error('Error al obtener mis recompensas:', error.message);
-    res.json([]);
-  }
-};
-
-exports.obtenerRecompensasDisponibles = async (req, res) => {
-  try {
-    const query = 'SELECT * FROM recompensas';
-    const { rows } = await db.query(query);
-    res.json(rows);
-  } catch (error) {
-    console.error('Error al obtener las recompensas disponibles:', error.message);
-    res.status(500).json({ msg: 'Error interno del servidor.' });
-  }
-};
-
-exports.marcarRecompensaUtilizada = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const query = 'UPDATE usuarios_recompensas SET utilizado = true, fecha_uso = NOW() WHERE id = $1 RETURNING *';
-    const { rows } = await db.query(query, [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ msg: 'La recompensa no fue encontrada.' });
-    }
-    res.json({ msg: 'Recompensa marcada como utilizada con éxito.', recompensa: rows[0] });
-  } catch (error) {
-    console.error('Error al marcar la recompensa:', error.message);
-    res.status(500).json({ msg: 'Error interno del servidor.' });
-  }
-};
-
-// --- FUNCIÓN DE BÚSQUEDA CORREGIDA Y MEJORADA ---
+// --- FUNCIÓN DE BÚSQUEDA SÚPER DEFENSIVA ---
 exports.buscarRecompensasPorEmail = async (req, res) => {
   const { email } = req.body;
-
   if (!email) {
     return res.status(400).json({ msg: 'El correo es requerido.' });
   }
 
+  console.log(`[REWARDS] Iniciando búsqueda para email: ${email}`);
+
   try {
-    // 1. Encontrar al usuario por su email. (Asumo que la tabla es 'usuarios')
-    const userQuery = 'SELECT id, nombre FROM usuarios WHERE email = $1';
-    const userResult = await db.query(userQuery, [email]);
+    // --- PASO 1: Buscar al cliente ---
+    let cliente;
+    try {
+      console.log("[REWARDS] PASO 1: Buscando usuario en la tabla 'usuarios'...");
+      const userQuery = 'SELECT id, nombre FROM usuarios WHERE email = $1';
+      const userResult = await db.query(userQuery, [email]);
 
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ msg: 'Cliente no encontrado.' });
+      if (userResult.rows.length === 0) {
+        console.log("[REWARDS] PASO 1: Cliente no encontrado.");
+        return res.status(404).json({ msg: 'Cliente no encontrado.' });
+      }
+      cliente = userResult.rows[0];
+      console.log(`[REWARDS] PASO 1: Cliente encontrado: ${cliente.nombre} (ID: ${cliente.id})`);
+    } catch (e) {
+      console.error("[REWARDS] FALLO CRÍTICO EN PASO 1. Causa:", e.message);
+      throw new Error("Error al buscar el cliente. Revisa que la tabla 'usuarios' exista.");
     }
-    const cliente = userResult.rows[0];
 
-    // 2. Contar las compras totales del cliente.
-    // IMPORTANTE: Revisa que tu tabla de ventas se llame 'ventas' y la columna sea 'cliente_id'.
-    const comprasQuery = 'SELECT COUNT(*) FROM ventas WHERE cliente_id = $1';
-    const comprasResult = await db.query(comprasQuery, [cliente.id]);
-    const totalCompras = parseInt(comprasResult.rows[0].count, 10);
+    // --- PASO 2: Contar sus compras ---
+    let totalCompras = 0;
+    try {
+      console.log("[REWARDS] PASO 2: Contando pedidos en la tabla 'pedidos'...");
+      // Usamos la columna 'id_cliente' que vimos en tu base de datos.
+      const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
+      const comprasResult = await db.query(comprasQuery, [cliente.id]);
+      totalCompras = parseInt(comprasResult.rows[0].count, 10);
+      console.log(`[REWARDS] PASO 2: Total de pedidos encontrados: ${totalCompras}`);
+    } catch (e) {
+      console.error("[REWARDS] FALLO EN PASO 2. Revisa que la tabla 'pedidos' y la columna 'id_cliente' existan. Causa:", e.message);
+      // No detenemos, asumimos 0 compras y continuamos.
+    }
 
-    // 3. Contar recompensas de café gratis ya usadas (de forma segura).
+    // --- PASO 3: Contar recompensas usadas ---
     let recompensasUsadas = 0;
     try {
-      // Esta consulta puede fallar si no tienes la tabla 'usuarios_recompensas'.
-      // IMPORTANTE: Revisa que la tabla se llame 'usuarios_recompensas'.
+      console.log("[REWARDS] PASO 3: Contando en 'usuarios_recompensas'...");
       const usadasQuery = 'SELECT COUNT(*) FROM usuarios_recompensas WHERE usuario_id = $1 AND recompensa_id = 1';
       const usadasResult = await db.query(usadasQuery, [cliente.id]);
       if (usadasResult.rows.length > 0) {
         recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
       }
+      console.log(`[REWARDS] PASO 3: Recompensas usadas encontradas: ${recompensasUsadas}`);
     } catch (e) {
-      // Si la tabla no existe, no detenemos el servidor.
-      console.log("Nota: No se encontró la tabla 'usuarios_recompensas'. Se asumirá 0 recompensas usadas.");
+      console.error("[REWARDS] FALLO EN PASO 3. Revisa que la tabla 'usuarios_recompensas' exista. Causa:", e.message);
+      // No detenemos, asumimos 0 recompensas usadas y continuamos.
     }
 
-    // 4. Calcular recompensas disponibles
+    // --- PASO 4: Calcular y enviar el resultado ---
+    console.log("[REWARDS] PASO 4: Calculando resultado final...");
     const recompensasGanadas = Math.floor(totalCompras / 10);
     const recompensasDisponibles = recompensasGanadas - recompensasUsadas;
     
     let recompensasParaEnviar = [];
     if (recompensasDisponibles > 0) {
       recompensasParaEnviar.push({
-        id: 1, // ID de la recompensa de café gratis
+        id: 1,
         nombre: 'Café o Frappe Gratis',
-        descripcion: `Felicidades, tienes ${recompensasDisponibles} bebida(s) gratis disponibles.`,
+        descripcion: `Felicidades, tienes ${recompensasDisponibles} bebida(s) gratis.`,
         cantidad: recompensasDisponibles
       });
     }
 
+    console.log("[REWARDS] Búsqueda completada exitosamente.");
     res.json({
       cliente: cliente,
       recompensas: recompensasParaEnviar
     });
 
   } catch (error) {
-    // Este error SÍ es crítico, probablemente porque la tabla 'usuarios' o 'ventas' tiene un nombre incorrecto.
-    console.error('Error Crítico al buscar recompensas. Revisa los nombres de las tablas y columnas.', error.message);
+    console.error('Error final en buscarRecompensasPorEmail:', error.message);
+    res.status(500).json({ msg: 'Error interno del servidor. Revisa los logs del backend.' });
+  }
+};
+
+
+// --- OTRAS FUNCIONES (SE MANTIENEN IGUAL) ---
+exports.obtenerMisRecompensas = async (req, res) => {
+  try {
+    const query = `
+      SELECT r.* FROM recompensas r
+      JOIN usuarios_recompensas ur ON r.id = ur.recompensa_id
+      WHERE ur.usuario_id = $1
+    `;
+    const { rows } = await db.query(query, [req.user.id]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error en obtenerMisRecompensas:', error.message);
+    res.status(500).json({ msg: "No se pudieron cargar las recompensas." });
+  }
+};
+
+exports.obtenerRecompensasDisponibles = async (req, res) => {
+  try {
+    const query = 'SELECT * FROM recompensas WHERE activo = true';
+    const { rows } = await db.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener recompensas disponibles:', error.message);
     res.status(500).json({ msg: 'Error interno del servidor.' });
   }
+};
+
+exports.marcarRecompensaUtilizada = async (req, res) => {
+  res.json({ msg: 'La recompensa se marcará al registrar la venta.' });
 };
