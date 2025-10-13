@@ -1,81 +1,79 @@
 // TITO-CAFE-BACKEND/routes/pedidosRoutes.js
 
+// 1. Importaciones necesarias
 const express = require('express');
 const router = express.Router();
 
-// Importamos el controlador que tiene toda la lógica
+// 2. Importación del controlador con la lógica de negocio
 const pedidosController = require('../controllers/pedidosController');
 
-// Importamos los middlewares de autenticación y roles
-// Asegúrate de que las rutas a estos archivos sean correctas
+// 3. Importación de los middlewares de seguridad
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
-//=================================================================
-// RUTAS PARA CLIENTES (Requieren solo autenticación)
-//=================================================================
+/*
+=================================================================
+ SECCIÓN DE RUTAS PARA CLIENTES
+ Estas rutas requieren que el usuario haya iniciado sesión Y tenga el rol de 'Cliente'.
+=================================================================
+*/
 
-// POST /api/pedidos
-// Crea un nuevo pedido. Protegida para que solo usuarios logueados puedan crear pedidos.
-// ESTA ES LA RUTA QUE ESTABA DANDO EL ERROR 500.
+// POST /api/pedidos -> Para crear un nuevo pedido
 router.post(
     '/',
-    authMiddleware, // <-- Middleware que verifica el token y añade `req.user`
+    [authMiddleware, roleMiddleware(['Cliente'])],
     pedidosController.crearPedido
 );
 
-// GET /api/pedidos/mis-pedidos
-// Obtiene el historial de pedidos del usuario que está logueado.
+// GET /api/pedidos/mis-pedidos -> Para ver su historial de pedidos
 router.get(
     '/mis-pedidos',
-    authMiddleware, // <-- Protegida para saber de qué usuario obtener los pedidos
+    [authMiddleware, roleMiddleware(['Cliente'])],
     pedidosController.obtenerMisPedidos
 );
 
-// POST /api/pedidos/calcular-envio
-// Calcula el costo de envío. Requiere estar logueado para usar esta función.
+// POST /api/pedidos/calcular-envio -> Para calcular el costo de envío
 router.post(
     '/calcular-envio',
-    authMiddleware,
+    [authMiddleware, roleMiddleware(['Cliente'])],
     pedidosController.calcularCostoEnvio
 );
 
 
-//=================================================================
-// RUTAS PARA EMPLEADOS Y JEFES (Requieren rol específico)
-//=================================================================
+/*
+=================================================================
+ SECCIÓN DE RUTAS PARA EMPLEADOS y JEFES
+ Estas rutas son para la gestión interna de los pedidos.
+=================================================================
+*/
 
-// GET /api/pedidos
-// Obtiene TODOS los pedidos. Solo para empleados y jefes.
+// GET /api/pedidos -> Para ver TODOS los pedidos de todos los clientes
 router.get(
     '/',
-    authMiddleware,
-    roleMiddleware(['EMPLEADO', 'JEFE']), // <-- Solo roles permitidos
+    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
     pedidosController.obtenerPedidos
 );
 
-// PATCH /api/pedidos/:id/estado
-// Actualiza el estado de un pedido (ej. 'en preparación', 'enviado'). Solo para empleados y jefes.
+// PATCH /api/pedidos/:id/estado -> Para actualizar el estado de un pedido
 router.patch(
     '/:id/estado',
-    authMiddleware,
-    roleMiddleware(['EMPLEADO', 'JEFE']),
+    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
     pedidosController.actualizarEstadoPedido
 );
 
 
-//=================================================================
-// RUTA SOLO PARA JEFE (Acción destructiva)
-//=================================================================
+/*
+=================================================================
+ SECCIÓN DE RUTA DE ALTO RIESGO (Solo para el JEFE)
+=================================================================
+*/
 
-// DELETE /api/pedidos/purgar
-// Elimina permanentemente TODOS los pedidos de la base de datos. Acción muy peligrosa.
+// DELETE /api/pedidos/purgar -> Para borrar PERMANENTEMENTE todos los pedidos
 router.delete(
     '/purgar',
-    authMiddleware,
-    roleMiddleware(['JEFE']), // <-- Solo el JEFE puede hacer esto
+    [authMiddleware, roleMiddleware(['JEFE'])],
     pedidosController.purgarPedidos
 );
 
-
+// 4. Exportar el router con todas las rutas configuradas
 module.exports = router;
