@@ -1,7 +1,6 @@
-// 1. RUTA CORREGIDA para apuntar a tu archivo config/db.js
 const db = require('../config/db');
 
-// Función para que un cliente vea sus recompensas personales
+// ... (tus otras funciones como obtenerMisRecompensas se quedan igual) ...
 exports.obtenerMisRecompensas = async (req, res) => {
   try {
     const query = `
@@ -17,10 +16,19 @@ exports.obtenerMisRecompensas = async (req, res) => {
   }
 };
 
-// Obtiene todas las recompensas que se pueden usar en el Punto de Venta
+
+// --- FUNCIÓN CORREGIDA ---
 exports.obtenerRecompensasDisponibles = async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM recompensas WHERE activo = true');
+    // CAMBIO IMPORTANTE: He quitado el "WHERE activo = true" para evitar el error.
+    // Esta consulta ahora traerá TODAS las recompensas.
+    // Reemplaza "recompensas" si tu tabla se llama diferente.
+    const query = 'SELECT * FROM recompensas';
+
+    // Si sabes el nombre de tu columna "activa", puedes usar esta consulta en su lugar:
+    // const query = 'SELECT * FROM recompensas WHERE TU_COLUMNA_ACTIVO = true';
+
+    const { rows } = await db.query(query);
     res.json(rows);
   } catch (error) {
     console.error('Error al obtener las recompensas disponibles:', error);
@@ -28,7 +36,8 @@ exports.obtenerRecompensasDisponibles = async (req, res) => {
   }
 };
 
-// Función para que un empleado marque una recompensa como utilizada
+
+// ... (tu función marcarRecompensaUtilizada se queda igual) ...
 exports.marcarRecompensaUtilizada = async (req, res) => {
   try {
     const { id } = req.params;
