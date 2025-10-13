@@ -23,11 +23,11 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  // LA LÍNEA CORREGIDA: Añadimos 'x-auth-token' a la lista
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'], 
 };
 
 // Aplicamos la configuración de CORS a todas las rutas.
-// Esta única línea es suficiente para manejar todo, incluyendo las peticiones preflight.
 app.use(cors(corsOptions));
 
 // Middleware para parsear JSON (debe ir después de CORS)
