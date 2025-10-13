@@ -22,6 +22,7 @@ exports.crearVenta = async (req, res) => {
 
     // 2. Insertamos cada producto del ticket en la tabla 'detalles_venta'
     for (const producto of productos) {
+      // CORRECCIÓN: Ahora se usa la cantidad correcta que viene del frontend
       const detalleQuery = 'INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
       await db.query(detalleQuery, [nuevaVentaId, producto.id, producto.cantidad, producto.precio]);
     }
