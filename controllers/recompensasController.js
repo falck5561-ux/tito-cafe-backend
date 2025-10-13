@@ -1,6 +1,48 @@
 const db = require('../config/db');
 
-// --- FUNCIÓN DE BÚSQUEDA SÚPER DEFENSIVA ---
+// --- FUNCIÓN PARA CLIENTES (CORRECCIÓN FINAL) ---
+// Ahora calcula las recompensas ganadas en lugar de solo buscar las usadas.
+exports.obtenerMisRecompensas = async (req, res) => {
+  // El ID del usuario que ha iniciado sesión se obtiene del middleware de autenticación
+  const usuarioId = req.user.id;
+
+  try {
+    // PASO 1: Contar las compras totales del cliente desde la tabla 'pedidos'
+    const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
+    const comprasResult = await db.query(comprasQuery, [usuarioId]);
+    const totalCompras = parseInt(comprasResult.rows[0].count, 10);
+
+    // PASO 2: Contar las recompensas de "café gratis" que ya ha usado
+    const usadasQuery = 'SELECT COUNT(*) FROM usuarios_recompensas WHERE usuario_id = $1 AND recompensa_id = 1';
+    const usadasResult = await db.query(usadasQuery, [usuarioId]);
+    const recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
+
+    // PASO 3: Calcular las recompensas que tiene disponibles
+    const recompensasGanadas = Math.floor(totalCompras / 10);
+    const recompensasDisponibles = recompensasGanadas - recompensasUsadas;
+
+    let recompensasParaEnviar = [];
+    if (recompensasDisponibles > 0) {
+      // Si tiene recompensas, las añadimos a la respuesta
+      recompensasParaEnviar.push({
+        id: 1, // ID de la recompensa
+        nombre: 'Café o Frappe Gratis',
+        descripcion: `¡Felicidades! Has ganado ${recompensasDisponibles} bebida(s) gratis por tus compras. Muéstrale esta pantalla al empleado para canjearla.`,
+        cantidad: recompensasDisponibles
+      });
+    }
+    
+    // Enviamos la lista (que puede estar vacía si no tiene recompensas)
+    res.json(recompensasParaEnviar);
+
+  } catch (error) {
+    console.error('Error Crítico en obtenerMisRecompensas:', error.message);
+    res.status(500).json({ msg: "No se pudieron cargar tus recompensas." });
+  }
+};
+
+
+// --- FUNCIÓN DE BÚSQUEDA PARA EMPLEADOS (YA ESTÁ CORRECTA) ---
 exports.buscarRecompensasPorEmail = async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -32,14 +74,12 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
     let totalCompras = 0;
     try {
       console.log("[REWARDS] PASO 2: Contando pedidos en la tabla 'pedidos'...");
-      // Usamos la columna 'id_cliente' que vimos en tu base de datos.
       const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
       const comprasResult = await db.query(comprasQuery, [cliente.id]);
       totalCompras = parseInt(comprasResult.rows[0].count, 10);
       console.log(`[REWARDS] PASO 2: Total de pedidos encontrados: ${totalCompras}`);
     } catch (e) {
       console.error("[REWARDS] FALLO EN PASO 2. Revisa que la tabla 'pedidos' y la columna 'id_cliente' existan. Causa:", e.message);
-      // No detenemos, asumimos 0 compras y continuamos.
     }
 
     // --- PASO 3: Contar recompensas usadas ---
@@ -54,7 +94,6 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
       console.log(`[REWARDS] PASO 3: Recompensas usadas encontradas: ${recompensasUsadas}`);
     } catch (e) {
       console.error("[REWARDS] FALLO EN PASO 3. Revisa que la tabla 'usuarios_recompensas' exista. Causa:", e.message);
-      // No detenemos, asumimos 0 recompensas usadas y continuamos.
     }
 
     // --- PASO 4: Calcular y enviar el resultado ---
@@ -84,23 +123,7 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
   }
 };
 
-
 // --- OTRAS FUNCIONES (SE MANTIENEN IGUAL) ---
-exports.obtenerMisRecompensas = async (req, res) => {
-  try {
-    const query = `
-      SELECT r.* FROM recompensas r
-      JOIN usuarios_recompensas ur ON r.id = ur.recompensa_id
-      WHERE ur.usuario_id = $1
-    `;
-    const { rows } = await db.query(query, [req.user.id]);
-    res.json(rows);
-  } catch (error) {
-    console.error('Error en obtenerMisRecompensas:', error.message);
-    res.status(500).json({ msg: "No se pudieron cargar las recompensas." });
-  }
-};
-
 exports.obtenerRecompensasDisponibles = async (req, res) => {
   try {
     const query = 'SELECT * FROM recompensas WHERE activo = true';
