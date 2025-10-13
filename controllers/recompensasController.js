@@ -1,11 +1,9 @@
-// 1. Importamos TU archivo de conexión a la base de datos
-const db = require('../db/db');
+// 1. RUTA CORREGIDA para apuntar a tu archivo config/db.js
+const db = require('../config/db');
 
 // Función para que un cliente vea sus recompensas personales
 exports.obtenerMisRecompensas = async (req, res) => {
   try {
-    // IMPORTANTE: Asumo que tus tablas se llaman 'usuarios_recompensas' y 'recompensas'.
-    // Si se llaman diferente, ajústalo en la consulta SQL.
     const query = `
       SELECT r.* FROM recompensas r
       JOIN usuarios_recompensas ur ON r.id = ur.recompensa_id
@@ -22,7 +20,6 @@ exports.obtenerMisRecompensas = async (req, res) => {
 // Obtiene todas las recompensas que se pueden usar en el Punto de Venta
 exports.obtenerRecompensasDisponibles = async (req, res) => {
   try {
-    // Asumo que tu tabla de recompensas se llama 'recompensas'.
     const { rows } = await db.query('SELECT * FROM recompensas WHERE activo = true');
     res.json(rows);
   } catch (error) {
@@ -34,9 +31,7 @@ exports.obtenerRecompensasDisponibles = async (req, res) => {
 // Función para que un empleado marque una recompensa como utilizada
 exports.marcarRecompensaUtilizada = async (req, res) => {
   try {
-    const { id } = req.params; // ID de la recompensa en la tabla 'usuarios_recompensas'
-
-    // Asumo que tu tabla se llama 'usuarios_recompensas'.
+    const { id } = req.params;
     const query = 'UPDATE usuarios_recompensas SET utilizado = true, fecha_uso = NOW() WHERE id = $1 RETURNING *';
     const { rows } = await db.query(query, [id]);
 
