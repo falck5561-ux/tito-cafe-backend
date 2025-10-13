@@ -105,3 +105,4 @@ exports.obtenerVentasDelDia = async (req, res) => {
   }
 };
 
+    
