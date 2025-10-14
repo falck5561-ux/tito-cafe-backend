@@ -82,7 +82,7 @@ exports.crearPedido = async (req, res) => {
     const countResult = await db.query(countQuery, [id_cliente]);
     const totalPedidos = parseInt(countResult.rows[0].count, 10);
    
-    // Se inserta una recompensa si es la 10ª compra (múltiplo de 10)
+    // Se inserta una recompensa si es la 10ª compra (múltiplo de 10)
     if (totalPedidos > 0 && totalPedidos % 10 === 0) {
       const nombreRecompensa = `¡Felicidades! Tienes un café o frappe gratis por tus ${totalPedidos} compras.`;
       const recompensaQuery = 'INSERT INTO recompensas (id_cliente, nombre) VALUES ($1, $2)';
@@ -114,8 +114,7 @@ exports.crearPedido = async (req, res) => {
 exports.obtenerPedidos = async (req, res) => {
   try {
     const query = `
-      SELECT
-        p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega,
+      SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega,
         p.latitude, p.longitude, p.referencia,
         COALESCE(u.nombre, 'Usuario Eliminado') as nombre_cliente,
         (
