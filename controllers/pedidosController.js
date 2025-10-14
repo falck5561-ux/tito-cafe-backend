@@ -4,7 +4,7 @@ const db = require('../config/db');
 const axios = require('axios');
 
 //=================================================================
-// CREAR UN NUEVO PEDIDO
+// CREAR UN NUEVO PEDIDO (VERSIÓN CORREGIDA Y ROBUSTA)
 //=================================================================
 exports.crearPedido = async (req, res) => {
   const {
@@ -18,29 +18,64 @@ exports.crearPedido = async (req, res) => {
     referencia
   } = req.body;
 
+  // Asegurarse de que el usuario esté autenticado
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ msg: 'Usuario no autenticado.' });
+  }
   const id_cliente = req.user.id;
 
-  if (!total || !productos || productos.length === 0 || !tipo_orden) {
-    return res.status(400).json({ msg: 'Faltan datos para crear el pedido.' });
+  // Validaciones básicas de la solicitud
+  if (!total || !productos || !Array.isArray(productos) || productos.length === 0 || !tipo_orden) {
+    return res.status(400).json({ msg: 'Faltan datos críticos para crear el pedido (total, productos, tipo_orden).' });
   }
 
-  if (tipo_orden === 'domicilio' && (direccion_entrega === null || latitude === null || longitude === null)) {
+  // Validación específica para pedidos a domicilio
+  if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined || longitude === undefined)) {
     return res.status(400).json({ msg: 'La dirección y coordenadas son obligatorias para la entrega a domicilio.' });
   }
 
+  // ========================== MEJORA #1 (Prevención de Error) ==========================
+  // Validar que cada producto en el array tenga toda la información necesaria.
+  const productosSonValidos = productos.every(p =>
+    p && p.id !== undefined && p.cantidad !== undefined && p.precio !== undefined
+  );
+
+  if (!productosSonValidos) {
+    return res.status(400).json({ msg: 'Uno o más productos en el pedido tienen datos incompletos (falta id, cantidad o precio).' });
+  }
+  // ==================================================================================
+
   try {
+    // Iniciar transacción
     await db.query('BEGIN');
 
     const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id';
-    const pedidoValues = [total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia];
+    
+    // ========================== MEJORA #2 (Prevención de Error) ==========================
+    // Asignar `null` a los valores opcionales si vienen como `undefined` o `null`.
+    // Esto evita errores de "NOT NULL constraint" en la base de datos.
+    const pedidoValues = [
+      total,
+      id_cliente,
+      tipo_orden,
+      direccion_entrega || null,
+      costo_envio || null,
+      latitude || null,
+      longitude || null,
+      referencia || null
+    ];
+    // ==================================================================================
+
     const pedidoResult = await db.query(pedidoQuery, pedidoValues);
     const nuevoPedidoId = pedidoResult.rows[0].id;
 
+    // Insertar los detalles del pedido (productos)
     for (const producto of productos) {
       const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
       await db.query(detalleQuery, [nuevoPedidoId, producto.id, producto.cantidad, producto.precio]);
     }
 
+    // Lógica para generar recompensas
     let recompensaGenerada = false;
     const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
     const countResult = await db.query(countQuery, [id_cliente]);
@@ -53,6 +88,7 @@ exports.crearPedido = async (req, res) => {
       recompensaGenerada = true;
     }
 
+    // Confirmar la transacción si todo salió bien
     await db.query('COMMIT');
 
     res.status(201).json({
@@ -62,8 +98,9 @@ exports.crearPedido = async (req, res) => {
     });
 
   } catch (err) {
+    // Revertir la transacción en caso de cualquier error
     await db.query('ROLLBACK');
-    console.error("Error en crearPedido:", err.message, err.stack);
+    console.error("Error en crearPedido:", err.message, err.stack); // Log para depuración en el servidor
     res.status(500).send('Error del Servidor al realizar el pedido');
   }
 };
@@ -205,7 +242,3 @@ exports.purgarPedidos = async (req, res) => {
     res.status(500).send('Error del Servidor al intentar purgar los pedidos.');
   }
 };
-
-// ✅ --- CORRECCIÓN FINAL --- ✅
-// Se eliminó la línea 'export default AdminPage;' que no pertenece a este archivo.
-// En Node.js, al usar 'exports.nombreFuncion', no se necesita una línea final de exportación.
