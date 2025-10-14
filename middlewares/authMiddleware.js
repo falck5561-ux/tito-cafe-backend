@@ -1,33 +1,28 @@
+// Archivo: middlewares/authMiddleware.js (Versión Corregida)
+
 const jwt = require('jsonwebtoken');
-require('dotenv').config(); // Asegura que las variables de entorno se carguen
+require('dotenv').config();
 
-// Este middleware protege las rutas verificando el token JWT
 module.exports = function(req, res, next) {
-    // 1. Obtener el token del encabezado de la petición
-    const token = req.header('x-auth-token');
+  // 1. Obtener el encabezado 'Authorization'
+  const authHeader = req.header('Authorization');
 
-    // 2. Verificar si no se proporcionó un token
-    if (!token) {
-        // Si no hay token, se niega el acceso
-        return res.status(401).json({ msg: 'No hay token, permiso denegado' });
-    }
+  // 2. Verificar si el encabezado existe y tiene el formato correcto 'Bearer <token>'
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ msg: 'No hay token o el formato es incorrecto, permiso denegado' });
+  }
 
-    // 3. Validar el token
-    try {
-        // Usamos jwt.verify para decodificar el token usando la clave secreta
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  try {
+    // 3. Extraer el token (quitando la palabra "Bearer " del inicio)
+    const token = authHeader.split(' ')[1];
 
-        // Si el token es válido, 'decoded' contendrá el payload (los datos del usuario)
-        // Agregamos el usuario del payload al objeto de la petición (req)
-        req.user = decoded.user;
-        
-        // El console.log para depurar (puedes quitarlo en producción)
-        console.log('✅ Token válido. Usuario autenticado:', req.user);
+    // 4. Validar el token con la clave secreta
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded.user;
+    next();
 
-        // Pasamos al siguiente middleware o al controlador de la ruta
-        next();
-    } catch (err) {
-        // Si jwt.verify falla (token expirado, clave secreta incorrecta, etc.), entra aquí
-        res.status(401).json({ msg: 'Token no es válido' });
-    }
+  } catch (err) {
+    // Esto se ejecutará si el token es inválido o ha expirado
+    res.status(401).json({ msg: 'Token no es válido' });
+  }
 };
