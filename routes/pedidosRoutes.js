@@ -7,7 +7,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
 /*==================================
-=            RUTAS PARA CLIENTES            =
+=         RUTAS PARA CLIENTES        =
 ==================================*/
 // POST /api/pedidos -> Para crear un nuevo pedido
 router.post(
@@ -31,12 +31,13 @@ router.post(
 );
 
 /*=============================================
-=            RUTAS PARA EMPLEADOS Y JEFES            =
+=         RUTAS PARA EMPLEADOS Y JEFES        =
 =============================================*/
 // GET /api/pedidos -> Para ver TODOS los pedidos
 router.get(
     '/',
-    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
+    // ✅ <-- CAMBIO REALIZADO AQUÍ: Se añadió 'Cliente' a la lista
+    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE', 'Cliente'])],
     pedidosController.obtenerPedidos
 );
 
@@ -48,7 +49,7 @@ router.patch(
 );
 
 /*========================================
-=            RUTA SOLO PARA JEFE            =
+=            RUTA SOLO PARA JEFE           =
 ========================================*/
 // DELETE /api/pedidos/purgar -> Para borrar PERMANENTEMENTE todos los pedidos
 router.delete(
