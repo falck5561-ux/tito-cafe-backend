@@ -76,7 +76,8 @@ exports.obtenerPedidos = async (req, res) => {
     const query = `
       SELECT
         p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega,
-        p.latitude, p.longitude, p.referencia, u.nombre as nombre_cliente,
+        p.latitude, p.longitude, p.referencia,
+        COALESCE(u.nombre, 'Usuario Eliminado') as nombre_cliente,
         (
           SELECT json_agg(json_build_object('nombre', pr.nombre, 'cantidad', dp.cantidad, 'precio', dp.precio_unidad))
           FROM detalles_pedido dp
@@ -84,7 +85,7 @@ exports.obtenerPedidos = async (req, res) => {
           WHERE dp.id_pedido = p.id
         ) as productos
       FROM pedidos p
-      JOIN usuarios u ON p.id_cliente = u.id
+      LEFT JOIN usuarios u ON p.id_cliente = u.id
       ORDER BY p.fecha DESC;
     `;
     const result = await db.query(query);
@@ -191,10 +192,20 @@ exports.calcularCostoEnvio = async (req, res) => {
 //=================================================================
 exports.purgarPedidos = async (req, res) => {
   try {
-    await db.query('TRUNCATE TABLE detalles_pedido, pedidos RESTART IDENTITY;');
+    await db.query('BEGIN');
+    await db.query('DELETE FROM detalles_pedido');
+    await db.query('DELETE FROM pedidos');
+    await db.query("SELECT setval(pg_get_serial_sequence('pedidos', 'id'), 1, false);");
+    await db.query('COMMIT');
+
     res.status(200).json({ msg: 'El historial de pedidos ha sido eliminado permanentemente.' });
   } catch (err) {
+    await db.query('ROLLBACK');
     console.error("Error en purgarPedidos:", err.message);
     res.status(500).send('Error del Servidor al intentar purgar los pedidos.');
   }
 };
+
+// ✅ --- CORRECCIÓN FINAL --- ✅
+// Se eliminó la línea 'export default AdminPage;' que no pertenece a este archivo.
+// En Node.js, al usar 'exports.nombreFuncion', no se necesita una línea final de exportación.
