@@ -82,13 +82,11 @@ exports.crearPedido = async (req, res) => {
     const countResult = await db.query(countQuery, [id_cliente]);
     const totalPedidos = parseInt(countResult.rows[0].count, 10);
    
-    // La lógica de tu aplicación ya era correcta: el problema radicaba en la falta de la columna `nombre`.
-    // Se asume que tu base de datos fue actualizada para que la tabla `recompensas` tenga una columna `descripcion`.
-    // Si la columna en tu tabla se llama `nombre`, la consulta de abajo debe ser `INSERT INTO recompensas (nombre, id_cliente) VALUES ($1, $2)`.
+    // Se inserta una recompensa si es la 10ª compra (múltiplo de 10)
     if (totalPedidos > 0 && totalPedidos % 10 === 0) {
-      const descripcion = `¡Felicidades! Tienes un café o frappe gratis por tus ${totalPedidos} compras.`;
-      const recompensaQuery = 'INSERT INTO recompensas (id_cliente, descripcion) VALUES ($1, $2)';
-      await db.query(recompensaQuery, [id_cliente, descripcion]);
+      const nombreRecompensa = `¡Felicidades! Tienes un café o frappe gratis por tus ${totalPedidos} compras.`;
+      const recompensaQuery = 'INSERT INTO recompensas (id_cliente, nombre) VALUES ($1, $2)';
+      await db.query(recompensaQuery, [id_cliente, nombreRecompensa]);
       recompensaGenerada = true;
     }
     // ===========================================================================
