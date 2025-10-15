@@ -16,3 +16,4 @@ router.put('/:id', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosContro
 router.delete('/:id', authMiddleware, checkRole(['JEFE']), combosController.eliminarCombo);
 
 module.exports = router;
+
