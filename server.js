@@ -5,12 +5,10 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- Middlewares ---
-
 // --- CONFIGURACIÓN DE CORS ---
 const allowedOrigins = [
   'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
-  'http://localhost:5173'                   // Tu sitio en desarrollo local
+  'http://localhost:5173'                    // Tu sitio en desarrollo local
 ];
 
 const corsOptions = {
@@ -23,14 +21,15 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  // LA LÍNEA CORREGIDA: Añadimos 'x-auth-token' a la lista
+  // ✅ LA LÍNEA CLAVE: Aseguramos que 'x-auth-token' esté en la lista
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'], 
 };
 
-// Aplicamos la configuración de CORS a todas las rutas.
+// --- Middlewares ---
+// 1. Aplicamos la configuración de CORS a TODAS las rutas.
 app.use(cors(corsOptions));
 
-// Middleware para parsear JSON (debe ir después de CORS)
+// 2. Middleware para parsear JSON (después de CORS)
 app.use(express.json());
 
 // --- Rutas ---
@@ -47,4 +46,4 @@ app.use('/api/combos', require('./routes/combosRoutes'));
 // --- Iniciar Servidor ---
 app.listen(PORT, () => {
   console.log(`🟢 Servidor Express corriendo en el puerto ${PORT}`);
-}); 
+});
