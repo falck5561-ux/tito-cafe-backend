@@ -1,28 +1,18 @@
-// Ruta: TITO-CAFE-BACKEND/routes/combosRoutes.js
-// VERSIÓN CORREGIDA
-
 const express = require('express');
 const router = express.Router();
-const promocionesController = require('../controllers/combosController');
+const combosController = require('../controllers/combosController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const roleMiddleware = require('../middlewares/roleMiddleware');
+const checkRole = require('../middlewares/roleMiddleware');
 
-// RUTA PÚBLICA: Para que los clientes vean las promociones activas en el menú.
-// --- ESTA ES LA LÍNEA CORREGIDA ---
-router.get('/activas', promocionesController.obtenerPromocionesActivas);
+// --- Ruta Pública (para clientes, solo ve combos activos) ---
+router.get('/', combosController.obtenerCombosActivos);
 
-// --- RUTAS PROTEGIDAS (Solo para el rol 'Jefe') ---
+// --- Ruta de Admin (para la tabla de gestión, ve todos los combos) ---
+router.get('/todos', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosController.obtenerTodosLosCombos);
 
-// RUTA ADMIN: Para obtener TODAS las promociones (activas e inactivas) en el panel de gestión.
-router.get('/todas', authMiddleware, roleMiddleware(['Jefe']), promocionesController.obtenerTodasPromociones);
-
-// RUTA ADMIN: Para crear una nueva promoción.
-router.post('/', authMiddleware, roleMiddleware(['Jefe']), promocionesController.crearPromocion);
-
-// RUTA ADMIN: Para actualizar una promoción existente.
-router.put('/:id', authMiddleware, roleMiddleware(['Jefe']), promocionesController.actualizarPromocion);
-
-// RUTA ADMIN: Para eliminar una promoción.
-router.delete('/:id', authMiddleware, roleMiddleware(['Jefe']), promocionesController.eliminarPromocion);
+// --- Rutas de Administración (protegidas) ---
+router.post('/', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosController.crearCombo);
+router.put('/:id', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosController.actualizarCombo);
+router.delete('/:id', authMiddleware, checkRole(['JEFE']), combosController.eliminarCombo);
 
 module.exports = router;
