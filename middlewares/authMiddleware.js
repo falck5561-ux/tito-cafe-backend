@@ -4,19 +4,16 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 module.exports = function(req, res, next) {
-  // 1. Obtener el encabezado 'Authorization'
-  const authHeader = req.header('Authorization');
+  // 1. Obtener el token del encabezado 'x-auth-token'
+  const token = req.header('x-auth-token');
 
-  // 2. Verificar si el encabezado existe y tiene el formato correcto 'Bearer <token>'
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ msg: 'No hay token o el formato es incorrecto, permiso denegado' });
+  // 2. Verificar si el token existe
+  if (!token) {
+    return res.status(401).json({ msg: 'No hay token, permiso denegado' });
   }
 
   try {
-    // 3. Extraer el token (quitando la palabra "Bearer " del inicio)
-    const token = authHeader.split(' ')[1];
-
-    // 4. Validar el token con la clave secreta
+    // 3. Validar el token con la clave secreta
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded.user;
     next();
