@@ -1,20 +1,30 @@
-// Archivo: routes/productosRoutes.js (Versión Final Corregida)
 const express = require('express');
 const router = express.Router();
 const productosController = require('../controllers/productosController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const checkRole = require('../middlewares/roleMiddleware');
 
-// --- Ruta Pública ---
+// =======================================================
+//  RUTAS PÚBLICAS (Para que cualquiera vea el menú)
+// =======================================================
+
+// GET /api/productos -> Obtener TODOS los productos
 router.get('/', productosController.obtenerProductos);
 
-// --- Rutas Protegidas (solo token) ---
-router.get('/:id', authMiddleware, productosController.obtenerProductoPorId);
+// GET /api/productos/:id -> Obtener UN producto (también público)
+router.get('/:id', productosController.obtenerProductoPorId);
 
-// --- Rutas de Administración (token + rol de Jefe) ---
-// La forma correcta de encadenar middlewares: uno después del otro.
-router.post('/', authMiddleware, checkRole(['Jefe']), productosController.crearProducto);
-router.put('/:id', authMiddleware, checkRole(['Jefe']), productosController.actualizarProducto);
-router.delete('/:id', authMiddleware, checkRole(['Jefe']), productosController.eliminarProducto);
+// =======================================================
+//  RUTAS DE ADMINISTRACIÓN (Protegidas por token y rol)
+// =======================================================
+
+// POST /api/productos -> Crear un producto (Jefe o Empleado)
+router.post('/', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.crearProducto);
+
+// PUT /api/productos/:id -> Actualizar un producto (Jefe o Empleado)
+router.put('/:id', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.actualizarProducto);
+
+// DELETE /api/productos/:id -> Eliminar un producto (Solo Jefe)
+router.delete('/:id', authMiddleware, checkRole(['JEFE']), productosController.eliminarProducto);
 
 module.exports = router;
