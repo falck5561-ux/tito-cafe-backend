@@ -14,7 +14,7 @@ exports.obtenerCombos = async (req, res) => {
   }
 };
 
-// OBTENER UN SOLO COMBO POR SU ID
+// OBTENER UN SOLO COMBO POR SU ID (¡FUNCIÓN MODIFICADA!)
 exports.obtenerComboPorId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -24,7 +24,28 @@ exports.obtenerComboPorId = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ msg: 'Combo no encontrado' });
     }
-    res.json(result.rows[0]);
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Obtenemos el combo de la base de datos
+    const comboDesdeDB = result.rows[0];
+
+    // Creamos un nuevo objeto con los nombres que el frontend espera
+    const comboParaFrontend = {
+      id: comboDesdeDB.id,
+      titulo: comboDesdeDB.nombre, // Mapeamos 'nombre' a 'titulo'
+      descripcion: comboDesdeDB.descripcion,
+      precio: comboDesdeDB.precio,
+      // Mapeamos 'imagen_url' a 'imagenes' (como un arreglo)
+      imagenes: comboDesdeDB.imagen_url ? [comboDesdeDB.imagen_url] : [],
+      // Mantenemos otros campos que tu formulario pueda necesitar
+      descuento_porcentaje: comboDesdeDB.descuento_porcentaje,
+      activa: comboDesdeDB.en_oferta
+    };
+    // --- FIN DE LA CORRECCIÓN ---
+
+    // Enviamos el objeto con los nombres ya traducidos
+    res.json(comboParaFrontend);
+
   } catch (err) {
     console.error("Error al obtener el combo:", err.message);
     res.status(500).send('Error del Servidor');
@@ -68,7 +89,6 @@ exports.actualizarCombo = async (req, res) => {
   const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
   try {
-    // ✅ CORRECCIÓN APLICADA AQUÍ: Se eliminó la 'a' extra antes de $2
     const query = `
       UPDATE productos 
       SET nombre = $1, descripcion = $2, precio = $3, imagen_url = $4 
