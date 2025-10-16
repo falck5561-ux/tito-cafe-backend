@@ -33,10 +33,7 @@ exports.obtenerComboPorId = async (req, res) => {
 
 // CREAR UN NUEVO COMBO
 exports.crearCombo = async (req, res) => {
-  // ✅ CORRECCIÓN: Usamos los nombres que envía el frontend ('titulo', 'imagenes', etc.)
   const { titulo, descripcion, precio, imagenes } = req.body;
-
-  // Extraemos la primera URL del arreglo de imágenes
   const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
   if (!titulo || !precio) {
@@ -64,16 +61,14 @@ exports.crearCombo = async (req, res) => {
   }
 };
 
-
 // ACTUALIZAR UN COMBO
 exports.actualizarCombo = async (req, res) => {
   const { id } = req.params;
-  // ✅ CORRECCIÓN: Usamos los nombres que envía el frontend ('titulo', 'imagenes', etc.)
   const { titulo, descripcion, precio, imagenes } = req.body;
-
   const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
   try {
+    // ✅ CORRECCIÓN APLICADA AQUÍ: Se eliminó la 'a' extra antes de $2
     const query = `
       UPDATE productos 
       SET nombre = $1, descripcion = $2, precio = $3, imagen_url = $4 
