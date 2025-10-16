@@ -2,18 +2,24 @@ const express = require('express');
 const router = express.Router();
 const combosController = require('../controllers/combosController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const checkRole = require('../middlewares/roleMiddleware');
+const checkRole = require('../middlewares/roleMiddleware'); // Asegúrate que este sea el nombre correcto de tu middleware de roles
 
-// --- Ruta Pública (para clientes, solo ve combos activos) ---
-router.get('/', combosController.obtenerCombosActivos);
+// RUTA PÚBLICA: Obtener todos los combos para los clientes
+// ANTES: Usaba una función que ya no existe.
+// AHORA: Usa la nueva función unificada 'obtenerCombos'.
+router.get('/', combosController.obtenerCombos);
 
-// --- Ruta de Admin (para la tabla de gestión, ve todos los combos) ---
-router.get('/todos', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosController.obtenerTodosLosCombos);
+// ===================================================
+// RUTAS PROTEGIDAS (SOLO PARA ADMINISTRADORES/JEFE)
+// ===================================================
 
-// --- Rutas de Administración (protegidas) ---
-router.post('/', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosController.crearCombo);
-router.put('/:id', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), combosController.actualizarCombo);
-router.delete('/:id', authMiddleware, checkRole(['JEFE']), combosController.eliminarCombo);
+// Crear un nuevo combo
+router.post('/', [authMiddleware, checkRole(['Jefe'])], combosController.crearCombo);
+
+// Actualizar un combo existente por su ID
+router.put('/:id', [authMiddleware, checkRole(['Jefe'])], combosController.actualizarCombo);
+
+// Eliminar un combo por su ID
+router.delete('/:id', [authMiddleware, checkRole(['Jefe'])], combosController.eliminarCombo);
 
 module.exports = router;
-
