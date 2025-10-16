@@ -10,7 +10,8 @@ const roleMiddleware = require('../middlewares/roleMiddleware');
 // POST /api/pedidos -> Para crear un nuevo pedido
 router.post(
     '/',
-    [authMiddleware, roleMiddleware(['Cliente'])],
+    // ✅ <-- CAMBIO REALIZADO AQUÍ
+    [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
     pedidosController.crearPedido
 );
 
@@ -24,7 +25,6 @@ router.get(
 // POST /api/pedidos/calcular-envio -> Para calcular el costo de envío
 router.post(
     '/calcular-envio',
-    // ✅ <-- CAMBIO REALIZADO AQUÍ
     [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
     pedidosController.calcularCostoEnvio
 );
