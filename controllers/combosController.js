@@ -2,26 +2,20 @@
 
 const db = require('../config/db');
 
-// OBTENER TODOS LOS COMBOS (¡FUNCIÓN MODIFICADA!)
+// OBTENER TODOS LOS COMBOS
 exports.obtenerCombos = async (req, res) => {
   try {
     const query = "SELECT * FROM productos WHERE categoria = 'Combo' ORDER BY nombre ASC";
     const result = await db.query(query);
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // "Traducimos" los nombres para cada combo en la lista
+    // ✅ CORRECCIÓN: Enviamos los nombres originales Y los nombres para el formulario
     const combosParaFrontend = result.rows.map(combo => ({
-      id: combo.id,
-      titulo: combo.nombre,
-      descripcion: combo.descripcion,
-      precio: combo.precio,
-      imagenes: combo.imagen_url ? [combo.imagen_url] : [],
-      descuento_porcentaje: combo.descuento_porcentaje,
-      activa: combo.en_oferta
+      ...combo, // Mantenemos todos los campos originales (nombre, imagen_url, etc.)
+      titulo: combo.nombre, // Añadimos 'titulo' para el formulario
+      imagenes: combo.imagen_url ? [combo.imagen_url] : [], // Añadimos 'imagenes' para el formulario
     }));
-    // --- FIN DE LA CORRECCIÓN ---
 
-    res.json(combosParaFrontend); // Enviamos la lista con los nombres ya corregidos
+    res.json(combosParaFrontend);
 
   } catch (err) {
     console.error("Error al obtener combos:", err.message);
@@ -29,7 +23,7 @@ exports.obtenerCombos = async (req, res) => {
   }
 };
 
-// OBTENER UN SOLO COMBO POR SU ID (Ya estaba corregida, la mantenemos)
+// OBTENER UN SOLO COMBO POR SU ID
 exports.obtenerComboPorId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -42,14 +36,11 @@ exports.obtenerComboPorId = async (req, res) => {
 
     const comboDesdeDB = result.rows[0];
 
+    // ✅ CORRECCIÓN: Enviamos los nombres originales Y los nombres para el formulario
     const comboParaFrontend = {
-      id: comboDesdeDB.id,
-      titulo: comboDesdeDB.nombre,
-      descripcion: comboDesdeDB.descripcion,
-      precio: comboDesdeDB.precio,
-      imagenes: comboDesdeDB.imagen_url ? [comboDesdeDB.imagen_url] : [],
-      descuento_porcentaje: comboDesdeDB.descuento_porcentaje,
-      activa: comboDesdeDB.en_oferta
+      ...comboDesdeDB, // Mantenemos todos los campos originales (nombre, imagen_url, etc.)
+      titulo: comboDesdeDB.nombre, // Añadimos 'titulo' para el formulario
+      imagenes: comboDesdeDB.imagen_url ? [comboDesdeDB.imagen_url] : [], // Añadimos 'imagenes' para el formulario
     };
 
     res.json(comboParaFrontend);
@@ -76,7 +67,7 @@ exports.crearCombo = async (req, res) => {
       RETURNING *`;
     
     const values = [
-      titulo,
+      titulo, // El 'titulo' del form se guarda en la columna 'nombre' de la DB
       descripcion,
       precio,
       imagen_url
@@ -104,7 +95,7 @@ exports.actualizarCombo = async (req, res) => {
       RETURNING *`;
       
     const values = [
-      titulo,
+      titulo, // El 'titulo' del form actualiza la columna 'nombre' de la DB
       descripcion,
       precio,
       imagen_url,
