@@ -1,5 +1,3 @@
-// routes/pedidosRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const pedidosController = require('../controllers/pedidosController');
@@ -19,25 +17,25 @@ router.post(
 // GET /api/pedidos/mis-pedidos -> Para ver su historial de pedidos
 router.get(
     '/mis-pedidos',
-    [authMiddleware, roleMiddleware(['Cliente'])],
+    [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
     pedidosController.obtenerMisPedidos
 );
 
 // POST /api/pedidos/calcular-envio -> Para calcular el costo de envío
 router.post(
     '/calcular-envio',
-    [authMiddleware, roleMiddleware(['Cliente'])],
+    // ✅ <-- CAMBIO REALIZADO AQUÍ
+    [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
     pedidosController.calcularCostoEnvio
 );
 
 /*=============================================
-=         RUTAS PARA EMPLEADOS Y JEFES        =
+=        RUTAS PARA EMPLEADOS Y JEFES         =
 =============================================*/
 // GET /api/pedidos -> Para ver TODOS los pedidos
 router.get(
     '/',
-    // ✅ <-- CAMBIO REALIZADO AQUÍ: Se añadió 'Cliente' a la lista
-    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE', 'Cliente'])],
+    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
     pedidosController.obtenerPedidos
 );
 
@@ -49,7 +47,7 @@ router.patch(
 );
 
 /*========================================
-=            RUTA SOLO PARA JEFE           =
+=             RUTA SOLO PARA JEFE          =
 ========================================*/
 // DELETE /api/pedidos/purgar -> Para borrar PERMANENTEMENTE todos los pedidos
 router.delete(
