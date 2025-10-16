@@ -14,16 +14,13 @@ exports.obtenerCombos = async (req, res) => {
 
 // CREAR UN NUEVO COMBO
 exports.crearCombo = async (req, res) => {
-  // Aceptamos 'titulo' que viene del frontend.
   const { titulo, descripcion, precio, imagen_url } = req.body;
 
-  // Validamos usando 'titulo'.
   if (!titulo || !precio) {
     return res.status(400).json({ msg: 'Los campos nombre y precio son obligatorios.' });
   }
 
   try {
-    // Generamos el ID a partir del 'titulo'.
     const id = titulo
         .toLowerCase()
         .replace(/\s+/g, '-')
@@ -36,7 +33,7 @@ exports.crearCombo = async (req, res) => {
     
     const values = [
       id, 
-      titulo, // Usamos el 'titulo' para guardarlo en la columna 'nombre'
+      titulo,
       descripcion, 
       precio, 
       imagen_url
@@ -53,7 +50,6 @@ exports.crearCombo = async (req, res) => {
 // ACTUALIZAR UN COMBO
 exports.actualizarCombo = async (req, res) => {
   const { id } = req.params;
-  // Aceptamos 'titulo' del frontend.
   const { titulo, descripcion, precio, imagen_url } = req.body;
   try {
     const query = `
@@ -63,7 +59,7 @@ exports.actualizarCombo = async (req, res) => {
       RETURNING *`;
       
     const values = [
-      titulo, // Usamos el 'titulo' para actualizar la columna 'nombre'
+      titulo,
       descripcion, 
       precio, 
       imagen_url,
