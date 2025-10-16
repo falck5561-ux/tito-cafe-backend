@@ -2,7 +2,7 @@ const db = require('../config/db');
 const axios = require('axios');
 
 //=================================================================
-// CREAR UN NUEVO PEDIDO (CORREGIDO Y MEJORADO)
+// CREAR UN NUEVO PEDIDO
 //=================================================================
 exports.crearPedido = async (req, res) => {
   const {
@@ -34,7 +34,7 @@ exports.crearPedido = async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    const pedidoQuery = `INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia, estado, fecha) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Pendiente', NOW()) RETURNING id;`;
+    const pedidoQuery = 'INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia, estado, fecha) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, \'Pendiente\', NOW()) RETURNING id;';
     
     const pedidoValues = [
       total, id_cliente, tipo_orden, direccion_entrega || null,
@@ -46,7 +46,7 @@ exports.crearPedido = async (req, res) => {
 
     if (productos && productos.length > 0) {
       for (const producto of productos) {
-        const detalleQuery = `INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4);`;
+        const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4);';
         await db.query(detalleQuery, [nuevoPedidoId, producto.id, producto.cantidad, producto.precio]);
       }
     }
@@ -92,32 +92,11 @@ exports.crearPedido = async (req, res) => {
 };
 
 //=================================================================
-// OBTENER TODOS LOS PEDIDOS (CORREGIDO PARA NUEVA LÓGICA)
+// OBTENER TODOS LOS PEDIDOS
 //=================================================================
 exports.obtenerPedidos = async (req, res) => {
   try {
-    const query = `
-      SELECT
-        p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega,
-        p.latitude, p.longitude, p.referencia,
-        u.nombre AS nombre_cliente,
-        (
-          SELECT json_agg(
-            json_build_object(
-              'nombre', pr.nombre,
-              'cantidad', dp.cantidad,
-              'precio', dp.precio_unidad
-            )
-          )
-          FROM detalles_pedido dp
-          JOIN productos pr ON dp.id_producto = pr.id
-          WHERE dp.id_pedido = p.id
-        ) AS productos
-      FROM pedidos p
-      LEFT JOIN usuarios u ON p.id_cliente = u.id
-      ORDER BY p.fecha DESC;
-    `;
-
+    const query = 'SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega, p.latitude, p.longitude, p.referencia, u.nombre AS nombre_cliente, (SELECT json_agg(json_build_object(\'nombre\', pr.nombre, \'cantidad\', dp.cantidad, \'precio\', dp.precio_unidad)) FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id WHERE dp.id_pedido = p.id) AS productos FROM pedidos p LEFT JOIN usuarios u ON p.id_cliente = u.id ORDER BY p.fecha DESC;';
     const result = await db.query(query);
     res.json(result.rows);
   } catch (err) {
@@ -127,30 +106,12 @@ exports.obtenerPedidos = async (req, res) => {
 };
 
 //=================================================================
-// OBTENER PEDIDOS DE UN CLIENTE (CORREGIDO PARA NUEVA LÓGICA)
+// OBTENER PEDIDOS DE UN CLIENTE
 //=================================================================
 exports.obtenerMisPedidos = async (req, res) => {
   try {
     const id_cliente = req.user.id;
-    const query = `
-      SELECT
-        p.id, p.fecha, p.total, p.estado, p.tipo_orden,
-        (
-          SELECT json_agg(
-            json_build_object(
-              'nombre', pr.nombre,
-              'cantidad', dp.cantidad,
-              'precio', dp.precio_unidad
-            )
-          )
-          FROM detalles_pedido dp
-          JOIN productos pr ON dp.id_producto = pr.id
-          WHERE dp.id_pedido = p.id
-        ) AS productos
-      FROM pedidos p
-      WHERE p.id_cliente = $1
-      ORDER BY p.fecha DESC;
-    `;
+    const query = 'SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, (SELECT json_agg(json_build_object(\'nombre\', pr.nombre, \'cantidad\', dp.cantidad, \'precio\', dp.precio_unidad)) FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id WHERE dp.id_pedido = p.id) AS productos FROM pedidos p WHERE p.id_cliente = $1 ORDER BY p.fecha DESC;';
     const result = await db.query(query, [id_cliente]);
     res.json(result.rows);
   } catch (err) {
@@ -160,7 +121,7 @@ exports.obtenerMisPedidos = async (req, res) => {
 };
 
 //=================================================================
-// ACTUALIZAR ESTADO DE UN PEDIDO (SIN CAMBIOS)
+// ACTUALIZAR ESTADO DE UN PEDIDO
 //=================================================================
 exports.actualizarEstadoPedido = async (req, res) => {
   const { id } = req.params;
@@ -182,7 +143,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
 };
 
 //=================================================================
-// CALCULAR COSTO DE ENVÍO (SIN CAMBIOS)
+// CALCULAR COSTO DE ENVÍO
 //=================================================================
 exports.calcularCostoEnvio = async (req, res) => {
   const { lat, lng } = req.body;
@@ -222,7 +183,7 @@ exports.calcularCostoEnvio = async (req, res) => {
 };
 
 //=================================================================
-// PURGAR PEDIDOS (CORREGIDO)
+// PURGAR PEDIDOS
 //=================================================================
 exports.purgarPedidos = async (req, res) => {
   try {
@@ -239,3 +200,4 @@ exports.purgarPedidos = async (req, res) => {
     res.status(500).send('Error del Servidor al purgar los pedidos.');
   }
 };
+
