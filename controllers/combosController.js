@@ -1,10 +1,8 @@
 const db = require('../config/db');
 
 // OBTENER TODOS LOS COMBOS (PARA PÚBLICO Y ADMIN)
-// Nota: Se unificaron las funciones ya que la nueva tabla no tiene columna 'activa'.
 exports.obtenerCombos = async (req, res) => {
   try {
-    // Es mejor ser explícito con las columnas que pides
     const query = 'SELECT id, nombre, descripcion, precio, imagen_url FROM combos ORDER BY nombre ASC';
     const result = await db.query(query);
     res.json(result.rows);
@@ -16,23 +14,32 @@ exports.obtenerCombos = async (req, res) => {
 
 // CREAR UN NUEVO COMBO
 exports.crearCombo = async (req, res) => {
-  // AHORA: Usamos los nombres de columna correctos de nuestra base de datos.
-  const { id, nombre, descripcion, precio, imagen_url } = req.body;
+  // ANTES: Esperábamos un 'id' que el frontend no enviaba.
+  // AHORA: Ya no pedimos el 'id', solo los datos del formulario.
+  const { nombre, descripcion, precio, imagen_url } = req.body;
 
-  // Verificación simple para asegurar que los datos necesarios lleguen
-  if (!id || !nombre || !precio) {
-    return res.status(400).json({ msg: 'Los campos id, nombre y precio son obligatorios.' });
-  }
+  // ANTES: La validación fallaba porque el 'id' estaba vacío.
+  // AHORA: La validación solo comprueba los datos que sí recibimos.
+  if (!nombre || !precio) {
+    return res.status(400).json({ msg: 'Los campos nombre y precio son obligatorios.' });
+  }
 
   try {
+    // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
+    // Generamos el ID en el backend a partir del nombre (creando un "slug").
+    const id = nombre
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]+/g, '');
+
     const query = `
       INSERT INTO combos (id, nombre, descripcion, precio, imagen_url) 
       VALUES ($1, $2, $3, $4, $5) 
       RETURNING *`;
     
     const values = [
-      id, 
-      nombre, // ANTES: 'titulo'
+      id, // Usamos el ID que acabamos de generar
+      nombre,
       descripcion, 
       precio, 
       imagen_url
@@ -46,10 +53,9 @@ exports.crearCombo = async (req, res) => {
   }
 };
 
-// ACTUALIZAR UN COMBO
+// ACTUALIZAR UN COMBO (Esta función ya estaba correcta)
 exports.actualizarCombo = async (req, res) => {
   const { id } = req.params;
-  // AHORA: Usamos los nombres de columna correctos
   const { nombre, descripcion, precio, imagen_url } = req.body;
   try {
     const query = `
@@ -59,7 +65,7 @@ exports.actualizarCombo = async (req, res) => {
       RETURNING *`;
       
     const values = [
-      nombre, // ANTES: 'titulo'
+      nombre,
       descripcion, 
       precio, 
       imagen_url,
@@ -77,7 +83,7 @@ exports.actualizarCombo = async (req, res) => {
   }
 };
 
-// ELIMINAR UN COMBO (Esta función estaba correcta, no necesita cambios)
+// ELIMINAR UN COMBO (Esta función ya estaba correcta)
 exports.eliminarCombo = async (req, res) => {
   const { id } = req.params;
   try {
