@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-// OBTENER TODOS LOS COMBOS (PARA PÚBLICO Y ADMIN)
+// OBTENER TODOS LOS COMBOS
 exports.obtenerCombos = async (req, res) => {
   try {
     const query = 'SELECT id, nombre, descripcion, precio, imagen_url FROM combos ORDER BY nombre ASC';
@@ -14,20 +14,17 @@ exports.obtenerCombos = async (req, res) => {
 
 // CREAR UN NUEVO COMBO
 exports.crearCombo = async (req, res) => {
-  // ANTES: Esperábamos un 'id' que el frontend no enviaba.
-  // AHORA: Ya no pedimos el 'id', solo los datos del formulario.
-  const { nombre, descripcion, precio, imagen_url } = req.body;
+  // CORRECCIÓN: Aceptamos 'titulo' que viene del frontend.
+  const { titulo, descripcion, precio, imagen_url } = req.body;
 
-  // ANTES: La validación fallaba porque el 'id' estaba vacío.
-  // AHORA: La validación solo comprueba los datos que sí recibimos.
-  if (!nombre || !precio) {
+  // CORRECCIÓN: Validamos usando 'titulo'.
+  if (!titulo || !precio) {
     return res.status(400).json({ msg: 'Los campos nombre y precio son obligatorios.' });
   }
 
   try {
-    // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
-    // Generamos el ID en el backend a partir del nombre (creando un "slug").
-    const id = nombre
+    // Generamos el ID a partir del 'titulo'.
+    const id = titulo
         .toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^\w-]+/g, '');
@@ -38,8 +35,8 @@ exports.crearCombo = async (req, res) => {
       RETURNING *`;
     
     const values = [
-      id, // Usamos el ID que acabamos de generar
-      nombre,
+      id, 
+      titulo, // <-- Usamos el 'titulo' para guardarlo en la columna 'nombre'
       descripcion, 
       precio, 
       imagen_url
@@ -53,10 +50,11 @@ exports.crearCombo = async (req, res) => {
   }
 };
 
-// ACTUALIZAR UN COMBO (Esta función ya estaba correcta)
+// ACTUALIZAR UN COMBO
 exports.actualizarCombo = async (req, res) => {
   const { id } = req.params;
-  const { nombre, descripcion, precio, imagen_url } = req.body;
+  // CORRECCIÓN: Aceptamos 'titulo' del frontend.
+  const { titulo, descripcion, precio, imagen_url } = req.body;
   try {
     const query = `
       UPDATE combos 
@@ -65,7 +63,7 @@ exports.actualizarCombo = async (req, res) => {
       RETURNING *`;
       
     const values = [
-      nombre,
+      titulo, // <-- Usamos el 'titulo' para actualizar la columna 'nombre'
       descripcion, 
       precio, 
       imagen_url,
@@ -83,7 +81,7 @@ exports.actualizarCombo = async (req, res) => {
   }
 };
 
-// ELIMINAR UN COMBO (Esta función ya estaba correcta)
+// ELIMINAR UN COMBO
 exports.eliminarCombo = async (req, res) => {
   const { id } = req.params;
   try {
