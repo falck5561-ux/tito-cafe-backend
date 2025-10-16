@@ -5,7 +5,6 @@ const db = require('../config/db');
 // OBTENER TODOS LOS COMBOS
 exports.obtenerCombos = async (req, res) => {
   try {
-    // ✅ CORRECCIÓN: Lee de la tabla 'productos' y filtra por categoría
     const query = "SELECT * FROM productos WHERE categoria = 'Combo' ORDER BY nombre ASC";
     const result = await db.query(query);
     res.json(result.rows);
@@ -15,8 +14,7 @@ exports.obtenerCombos = async (req, res) => {
   }
 };
 
-// ✅ NUEVA FUNCIÓN AÑADIDA: OBTENER UN SOLO COMBO POR SU ID
-// Esto es lo que llenará los datos en tu formulario de "Editar Combo"
+// OBTENER UN SOLO COMBO POR SU ID
 exports.obtenerComboPorId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -35,27 +33,26 @@ exports.obtenerComboPorId = async (req, res) => {
 
 // CREAR UN NUEVO COMBO
 exports.crearCombo = async (req, res) => {
-  // El formulario de admin usa 'Título', lo mapeamos a 'nombre'
-  const { Titulo_del_Combo, Descripcion, Precio, Imagenes_del_Combo } = req.body;
+  // ✅ CORRECCIÓN: Usamos los nombres que envía el frontend ('titulo', 'imagenes', etc.)
+  const { titulo, descripcion, precio, imagenes } = req.body;
 
   // Extraemos la primera URL del arreglo de imágenes
-  const imagen_url = (Imagenes_del_Combo && Imagenes_del_Combo.length > 0) ? Imagenes_del_Combo[0] : null;
+  const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
-  if (!Titulo_del_Combo || !Precio) {
+  if (!titulo || !precio) {
     return res.status(400).json({ msg: 'El título y el precio son obligatorios.' });
   }
 
   try {
-    // ✅ CORRECCIÓN: Inserta en la tabla 'productos' con categoría 'Combo'
     const query = `
       INSERT INTO productos (nombre, descripcion, precio, categoria, imagen_url) 
       VALUES ($1, $2, $3, 'Combo', $4) 
       RETURNING *`;
     
     const values = [
-      Titulo_del_Combo,
-      Descripcion,
-      Precio,
+      titulo,
+      descripcion,
+      precio,
       imagen_url
     ];
 
@@ -71,11 +68,12 @@ exports.crearCombo = async (req, res) => {
 // ACTUALIZAR UN COMBO
 exports.actualizarCombo = async (req, res) => {
   const { id } = req.params;
-  const { Titulo_del_Combo, Descripcion, Precio, Imagenes_del_Combo } = req.body;
-  const imagen_url = (Imagenes_del_Combo && Imagenes_del_Combo.length > 0) ? Imagenes_del_Combo[0] : null;
+  // ✅ CORRECCIÓN: Usamos los nombres que envía el frontend ('titulo', 'imagenes', etc.)
+  const { titulo, descripcion, precio, imagenes } = req.body;
+
+  const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
   try {
-    // ✅ CORRECCIÓN: Actualiza en la tabla 'productos'
     const query = `
       UPDATE productos 
       SET nombre = $1, descripcion = $2, precio = $3, imagen_url = $4 
@@ -83,9 +81,9 @@ exports.actualizarCombo = async (req, res) => {
       RETURNING *`;
       
     const values = [
-      Titulo_del_Combo,
-      Descripcion,
-      Precio,
+      titulo,
+      descripcion,
+      precio,
       imagen_url,
       id
     ];
@@ -105,7 +103,6 @@ exports.actualizarCombo = async (req, res) => {
 exports.eliminarCombo = async (req, res) => {
   const { id } = req.params;
   try {
-    // ✅ CORRECCIÓN: Elimina de la tabla 'productos'
     const result = await db.query("DELETE FROM productos WHERE id = $1 AND categoria = 'Combo'", [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ msg: 'Combo no encontrado' });
