@@ -1,51 +1,59 @@
 const db = require('../config/db');
 
-// --- FUNCIÓN 'crearVenta' CON LÓGICA DE RECOMPENSAS INTEGRADA ---
+// --- FUNCIÓN 'crearVenta' CORREGIDA PARA ACEPTAR PRODUCTOS Y COMBOS ---
 exports.crearVenta = async (req, res) => {
-  // Obtenemos todos los datos del frontend, incluyendo los de la recompensa
-  const { total, metodo_pago, productos, clienteId, recompensaUsadaId } = req.body;
-  const id_empleado = req.user.id; // El ID del empleado viene del token
+  // 1. AHORA ACEPTAMOS 'combos' ADEMÁS DE 'productos'
+  const { total, metodo_pago, productos, combos, clienteId, recompensaUsadaId } = req.body;
+  const id_empleado = req.user.id;
 
-  // Validación de datos de entrada
-  if ((!total && total !== 0) || !metodo_pago || !productos || productos.length === 0) {
-    return res.status(400).json({ msg: 'Todos los campos son requeridos' });
+  // 2. CORRECCIÓN: La validación ahora comprueba si AMBOS arrays están vacíos.
+  if ((!productos || productos.length === 0) && (!combos || combos.length === 0)) {
+    return res.status(400).json({ msg: 'El ticket de venta no puede estar vacío.' });
   }
 
   try {
-    // Iniciamos una transacción para asegurar la integridad de los datos
     await db.query('BEGIN');
 
-    // 1. Insertamos la venta principal en la tabla 'ventas', incluyendo el 'cliente_id' si existe
+    // 3. Insertar la venta principal (esta lógica se mantiene igual)
     const ventaQuery = 'INSERT INTO ventas (total, metodo_pago, id_empleado, cliente_id) VALUES ($1, $2, $3, $4) RETURNING id';
     const ventaResult = await db.query(ventaQuery, [total, metodo_pago, id_empleado, clienteId]);
     const nuevaVentaId = ventaResult.rows[0].id;
 
-    // 2. Insertamos cada producto del ticket en la tabla 'detalles_venta'
-    for (const producto of productos) {
-      // CORRECCIÓN: Ahora se usa la cantidad correcta que viene del frontend
-      const detalleQuery = 'INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      await db.query(detalleQuery, [nuevaVentaId, producto.id, producto.cantidad, producto.precio]);
+    // 4. Insertar los productos individuales (si existen)
+    if (productos && productos.length > 0) {
+      for (const producto of productos) {
+        const detalleQuery = 'INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
+        await db.query(detalleQuery, [nuevaVentaId, producto.id, producto.cantidad, producto.precio]);
+      }
     }
 
-    // 3. ¡PASO CLAVE! Si se aplicó una recompensa, la registramos en la base de datos
+    // 5. ¡NUEVO! Insertar los combos vendidos en la nueva tabla (si existen)
+    if (combos && combos.length > 0) {
+        for (const combo of combos) {
+          const detalleComboQuery = `
+            INSERT INTO detalles_venta_combos (id_venta, id_combo, cantidad, precio_unidad) 
+            VALUES ($1, $2, $3, $4)`;
+          await db.query(detalleComboQuery, [nuevaVentaId, combo.id, combo.cantidad, combo.precio]);
+        }
+      }
+
+    // 6. Tu lógica de recompensas se mantiene intacta
     if (clienteId && recompensaUsadaId) {
       const recompensaQuery = 'INSERT INTO usuarios_recompensas (usuario_id, recompensa_id, venta_id) VALUES ($1, $2, $3);';
       await db.query(recompensaQuery, [clienteId, recompensaUsadaId, nuevaVentaId]);
     }
 
-    // Si todo fue exitoso, confirmamos la transacción
     await db.query('COMMIT');
     res.status(201).json({ msg: 'Venta registrada con éxito', ventaId: nuevaVentaId });
 
   } catch (err) {
-    // Si algo falla en cualquier punto, revertimos todos los cambios
     await db.query('ROLLBACK');
     console.error("Error al registrar la venta:", err.message);
     res.status(500).send('Error del Servidor al registrar la venta');
   }
 };
 
-// --- OTRAS FUNCIONES (SE MANTIENEN EXACTAMENTE COMO LAS TENÍAS) ---
+// --- OTRAS FUNCIONES (SE MANTIENEN EXACTAMENTE IGUAL) ---
 
 exports.obtenerReporteVentas = async (req, res) => {
   try {
@@ -105,4 +113,3 @@ exports.obtenerVentasDelDia = async (req, res) => {
   }
 };
 
-    
