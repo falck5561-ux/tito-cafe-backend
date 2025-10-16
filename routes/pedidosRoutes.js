@@ -9,24 +9,23 @@ const roleMiddleware = require('../middlewares/roleMiddleware');
 ==================================*/
 // POST /api/pedidos -> Para crear un nuevo pedido
 router.post(
-    '/',
-    // ✅ <-- CAMBIO REALIZADO AQUÍ
-    [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
-    pedidosController.crearPedido
+  '/',
+  [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
+  pedidosController.crearPedido
 );
 
 // GET /api/pedidos/mis-pedidos -> Para ver su historial de pedidos
 router.get(
-    '/mis-pedidos',
-    [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
-    pedidosController.obtenerMisPedidos
+  '/mis-pedidos',
+  [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
+  pedidosController.obtenerMisPedidos
 );
 
 // POST /api/pedidos/calcular-envio -> Para calcular el costo de envío
 router.post(
-    '/calcular-envio',
-    [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
-    pedidosController.calcularCostoEnvio
+  '/calcular-envio',
+  [authMiddleware, roleMiddleware(['Cliente', 'JEFE'])],
+  pedidosController.calcularCostoEnvio
 );
 
 /*=============================================
@@ -34,16 +33,17 @@ router.post(
 =============================================*/
 // GET /api/pedidos -> Para ver TODOS los pedidos
 router.get(
-    '/',
-    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
-    pedidosController.obtenerPedidos
+  '/',
+  [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
+  pedidosController.obtenerPedidos
 );
 
-// PATCH /api/pedidos/:id/estado -> Para actualizar el estado de un pedido
-router.patch(
-    '/:id/estado',
-    [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
-    pedidosController.actualizarEstadoPedido
+// --- ¡CORRECCIÓN APLICADA AQUÍ! ---
+// Se cambió el método de PATCH a PUT para que coincida con el frontend.
+router.put(
+  '/:id/estado',
+  [authMiddleware, roleMiddleware(['EMPLEADO', 'JEFE'])],
+  pedidosController.actualizarEstadoPedido
 );
 
 /*========================================
@@ -51,9 +51,9 @@ router.patch(
 ========================================*/
 // DELETE /api/pedidos/purgar -> Para borrar PERMANENTEMENTE todos los pedidos
 router.delete(
-    '/purgar',
-    [authMiddleware, roleMiddleware(['JEFE'])],
-    pedidosController.purgarPedidos
+  '/purgar',
+  [authMiddleware, roleMiddleware(['JEFE'])],
+  pedidosController.purgarPedidos
 );
 
 module.exports = router;
