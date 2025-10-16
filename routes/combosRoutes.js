@@ -26,3 +26,4 @@ router.delete('/:id', [authMiddleware, checkRole(['Jefe'])], combosController.el
 
 
 module.exports = router;
+
