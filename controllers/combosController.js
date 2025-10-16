@@ -2,19 +2,34 @@
 
 const db = require('../config/db');
 
-// OBTENER TODOS LOS COMBOS
+// OBTENER TODOS LOS COMBOS (¡FUNCIÓN MODIFICADA!)
 exports.obtenerCombos = async (req, res) => {
   try {
     const query = "SELECT * FROM productos WHERE categoria = 'Combo' ORDER BY nombre ASC";
     const result = await db.query(query);
-    res.json(result.rows);
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // "Traducimos" los nombres para cada combo en la lista
+    const combosParaFrontend = result.rows.map(combo => ({
+      id: combo.id,
+      titulo: combo.nombre,
+      descripcion: combo.descripcion,
+      precio: combo.precio,
+      imagenes: combo.imagen_url ? [combo.imagen_url] : [],
+      descuento_porcentaje: combo.descuento_porcentaje,
+      activa: combo.en_oferta
+    }));
+    // --- FIN DE LA CORRECCIÓN ---
+
+    res.json(combosParaFrontend); // Enviamos la lista con los nombres ya corregidos
+
   } catch (err) {
     console.error("Error al obtener combos:", err.message);
     res.status(500).send('Error del Servidor');
   }
 };
 
-// OBTENER UN SOLO COMBO POR SU ID (¡FUNCIÓN MODIFICADA!)
+// OBTENER UN SOLO COMBO POR SU ID (Ya estaba corregida, la mantenemos)
 exports.obtenerComboPorId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -25,25 +40,18 @@ exports.obtenerComboPorId = async (req, res) => {
       return res.status(404).json({ msg: 'Combo no encontrado' });
     }
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Obtenemos el combo de la base de datos
     const comboDesdeDB = result.rows[0];
 
-    // Creamos un nuevo objeto con los nombres que el frontend espera
     const comboParaFrontend = {
       id: comboDesdeDB.id,
-      titulo: comboDesdeDB.nombre, // Mapeamos 'nombre' a 'titulo'
+      titulo: comboDesdeDB.nombre,
       descripcion: comboDesdeDB.descripcion,
       precio: comboDesdeDB.precio,
-      // Mapeamos 'imagen_url' a 'imagenes' (como un arreglo)
       imagenes: comboDesdeDB.imagen_url ? [comboDesdeDB.imagen_url] : [],
-      // Mantenemos otros campos que tu formulario pueda necesitar
       descuento_porcentaje: comboDesdeDB.descuento_porcentaje,
       activa: comboDesdeDB.en_oferta
     };
-    // --- FIN DE LA CORRECCIÓN ---
 
-    // Enviamos el objeto con los nombres ya traducidos
     res.json(comboParaFrontend);
 
   } catch (err) {
