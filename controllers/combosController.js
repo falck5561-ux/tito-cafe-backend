@@ -1,5 +1,3 @@
-// Archivo: controllers/combosController.js
-
 const db = require('../config/db');
 
 // OBTENER TODOS LOS COMBOS
@@ -8,15 +6,13 @@ exports.obtenerCombos = async (req, res) => {
     const query = "SELECT * FROM productos WHERE categoria = 'Combo' ORDER BY nombre ASC";
     const result = await db.query(query);
 
-    // ✅ CORRECCIÓN: Enviamos los nombres originales Y los nombres para el formulario
     const combosParaFrontend = result.rows.map(combo => ({
-      ...combo, // Mantenemos todos los campos originales (nombre, imagen_url, etc.)
-      titulo: combo.nombre, // Añadimos 'titulo' para el formulario
-      imagenes: combo.imagen_url ? [combo.imagen_url] : [], // Añadimos 'imagenes' para el formulario
+      ...combo,
+      titulo: combo.nombre,
+      imagenes: combo.imagen_url ? [combo.imagen_url] : [],
     }));
 
     res.json(combosParaFrontend);
-
   } catch (err) {
     console.error("Error al obtener combos:", err.message);
     res.status(500).send('Error del Servidor');
@@ -33,16 +29,14 @@ exports.obtenerComboPorId = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ msg: 'Combo no encontrado' });
     }
-
     const comboDesdeDB = result.rows[0];
 
-    // ✅ CORRECCIÓN: Enviamos los nombres originales Y los nombres para el formulario
     const comboParaFrontend = {
-      ...comboDesdeDB, // Mantenemos todos los campos originales (nombre, imagen_url, etc.)
-      titulo: comboDesdeDB.nombre, // Añadimos 'titulo' para el formulario
-      imagenes: comboDesdeDB.imagen_url ? [comboDesdeDB.imagen_url] : [], // Añadimos 'imagenes' para el formulario
+      ...comboDesdeDB,
+      titulo: comboDesdeDB.nombre,
+      imagenes: comboDesdeDB.imagen_url ? [comboDesdeDB.imagen_url] : [],
+      activa: comboDesdeDB.en_oferta, // Mapeamos 'en_oferta' a 'activa' para el switch
     };
-
     res.json(comboParaFrontend);
 
   } catch (err) {
@@ -53,7 +47,8 @@ exports.obtenerComboPorId = async (req, res) => {
 
 // CREAR UN NUEVO COMBO
 exports.crearCombo = async (req, res) => {
-  const { titulo, descripcion, precio, imagenes } = req.body;
+  // AHORA: Recibimos los nuevos campos del formulario
+  const { titulo, descripcion, precio, imagenes, descuento_porcentaje, activa } = req.body;
   const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
   if (!titulo || !precio) {
@@ -61,16 +56,19 @@ exports.crearCombo = async (req, res) => {
   }
 
   try {
+    // AHORA: Insertamos los nuevos campos en la DB
     const query = `
-      INSERT INTO productos (nombre, descripcion, precio, categoria, imagen_url) 
-      VALUES ($1, $2, $3, 'Combo', $4) 
+      INSERT INTO productos (nombre, descripcion, precio, categoria, imagen_url, descuento_porcentaje, en_oferta) 
+      VALUES ($1, $2, $3, 'Combo', $4, $5, $6) 
       RETURNING *`;
     
     const values = [
-      titulo, // El 'titulo' del form se guarda en la columna 'nombre' de la DB
+      titulo,
       descripcion,
       precio,
-      imagen_url
+      imagen_url,
+      descuento_porcentaje || 0,
+      activa // 'activa' del switch se guarda en 'en_oferta'
     ];
 
     const result = await db.query(query, values);
@@ -84,21 +82,25 @@ exports.crearCombo = async (req, res) => {
 // ACTUALIZAR UN COMBO
 exports.actualizarCombo = async (req, res) => {
   const { id } = req.params;
-  const { titulo, descripcion, precio, imagenes } = req.body;
+  // AHORA: Recibimos los nuevos campos del formulario
+  const { titulo, descripcion, precio, imagenes, descuento_porcentaje, activa } = req.body;
   const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
 
   try {
+    // AHORA: Actualizamos los nuevos campos en la DB
     const query = `
       UPDATE productos 
-      SET nombre = $1, descripcion = $2, precio = $3, imagen_url = $4 
-      WHERE id = $5 AND categoria = 'Combo'
+      SET nombre = $1, descripcion = $2, precio = $3, imagen_url = $4, descuento_porcentaje = $5, en_oferta = $6 
+      WHERE id = $7 AND categoria = 'Combo'
       RETURNING *`;
       
     const values = [
-      titulo, // El 'titulo' del form actualiza la columna 'nombre' de la DB
+      titulo,
       descripcion,
       precio,
       imagen_url,
+      descuento_porcentaje || 0,
+      activa,
       id
     ];
 
