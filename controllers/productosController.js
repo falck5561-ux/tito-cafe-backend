@@ -2,11 +2,11 @@
 
 const db = require('../config/db');
 
-// Obtener todos los productos (AHORA FILTRA LOS COMBOS)
+// Obtener todos los productos (AHORA FILTRA INACTIVOS Y COMBOS)
 exports.obtenerProductos = async (req, res) => {
   try {
-    // ✅ CORRECCIÓN: Seleccionamos solo los que NO son de categoría 'Combo'
-    const result = await db.query("SELECT * FROM productos WHERE categoria != 'Combo' ORDER BY nombre ASC");
+    // ✅ CORRECCIÓN: Seleccionamos solo los productos que están activos y no son combos.
+    const result = await db.query("SELECT * FROM productos WHERE esta_activo = true AND categoria != 'Combo' ORDER BY nombre ASC");
     res.json(result.rows);
   } catch (err) {
     console.error("Error al obtener productos:", err.message);
@@ -31,7 +31,6 @@ exports.obtenerProductoPorId = async (req, res) => {
 
 // Crear un nuevo producto
 exports.crearProducto = async (req, res) => {
-  // ✅ CORRECCIÓN: Usamos 'imagen_url' en lugar de 'imagenes'
   const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
   
   if (!nombre || !precio) {
@@ -39,9 +38,10 @@ exports.crearProducto = async (req, res) => {
   }
 
   try {
+    // ✅ CORRECCIÓN: Al crear, se asegura de que el producto esté activo por defecto.
     const query = `
-      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta, esta_activo) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true) 
       RETURNING *`;
     
     const values = [
@@ -49,8 +49,8 @@ exports.crearProducto = async (req, res) => {
       descripcion || null,
       precio,
       stock || 0,
-      categoria || 'General', // Categoria por defecto si no se especifica
-      imagen_url || null,    // Se guarda la URL directamente
+      categoria || 'General',
+      imagen_url || null,
       descuento_porcentaje || 0,
       en_oferta || false
     ];
@@ -67,7 +67,6 @@ exports.crearProducto = async (req, res) => {
 exports.actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    // ✅ CORRECCIÓN: Usamos 'imagen_url' en lugar de 'imagenes'
     const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
 
     const query = `
@@ -82,7 +81,7 @@ exports.actualizarProducto = async (req, res) => {
       precio,
       stock,
       categoria,
-      imagen_url, // Se pasa la URL directamente
+      imagen_url,
       descuento_porcentaje,
       en_oferta,
       id
@@ -100,17 +99,21 @@ exports.actualizarProducto = async (req, res) => {
   }
 };
 
-// Eliminar un producto
+// ✅ CORRECCIÓN: "Eliminar" un producto ahora lo desactiva (Soft Delete)
 exports.eliminarProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query('DELETE FROM productos WHERE id = $1 RETURNING *', [id]);
+    // En lugar de 'DELETE', hacemos un 'UPDATE' para cambiar el estado a inactivo.
+    const query = 'UPDATE productos SET esta_activo = false WHERE id = $1 RETURNING *';
+    const result = await db.query(query, [id]);
+    
     if (result.rowCount === 0) {
-      return res.status(404).json({ msg: 'Producto no encontrado para eliminar' });
+      return res.status(404).json({ msg: 'Producto no encontrado para desactivar' });
     }
-    res.json({ msg: 'Producto eliminado exitosamente' });
+    res.json({ msg: 'Producto desactivado exitosamente' });
   } catch (err) {
-    console.error(`Error al eliminar el producto ${req.params.id}:`, err.message);
+    console.error(`Error al desactivar el producto ${req.params.id}:`, err.message);
+    // Este error ya no debería ser por una 'foreign key', pero lo dejamos por si acaso.
     res.status(500).send('Error del Servidor');
   }
 };
