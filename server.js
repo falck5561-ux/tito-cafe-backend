@@ -6,15 +6,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- CONFIGURACIÓN DE CORS ---
+// Se añaden múltiples puertos locales para evitar futuros bloqueos
 const allowedOrigins = [
   'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
-  'http://localhost:5173',                   // Tu sitio de desarrollo de Tito Café
-  'http://localhost:5175',                   // <-- AÑADIDO: Tu nuevo sitio de Miss Donitas
-  'http://localhost:5176'                    // <-- AÑADIDO: Por si Vite usa otro puerto
+  'http://localhost:5173',                  // Puerto de desarrollo por defecto
+  'http://localhost:5174',                  // Puerto que estás usando ahora
+  'http://localhost:5175',                  // Otro puerto que has usado
+  'http://localhost:5176'                   // Un puerto extra, por si acaso
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Permite peticiones sin origen (como las de Postman o apps móviles) y las de la lista
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -45,3 +48,4 @@ app.use('/api/combos', require('./routes/combosRoutes'));
 app.listen(PORT, () => {
   console.log(`🟢 Servidor Express corriendo en el puerto ${PORT}`);
 });
+
