@@ -8,7 +8,9 @@ const PORT = process.env.PORT || 3000;
 // --- CONFIGURACIÓN DE CORS ---
 const allowedOrigins = [
   'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
-  'http://localhost:5173'                    // Tu sitio en desarrollo local
+  'http://localhost:5173',                   // Tu sitio de desarrollo de Tito Café
+  'http://localhost:5175',                   // <-- AÑADIDO: Tu nuevo sitio de Miss Donitas
+  'http://localhost:5176'                    // <-- AÑADIDO: Por si Vite usa otro puerto
 ];
 
 const corsOptions = {
@@ -21,15 +23,11 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  // ✅ LA LÍNEA CLAVE: Aseguramos que 'x-auth-token' esté en la lista
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'], 
 };
 
 // --- Middlewares ---
-// 1. Aplicamos la configuración de CORS a TODAS las rutas.
 app.use(cors(corsOptions));
-
-// 2. Middleware para parsear JSON (después de CORS)
 app.use(express.json());
 
 // --- Rutas ---
