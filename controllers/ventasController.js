@@ -1,10 +1,13 @@
+// Archivo: controllers/ventasController.js
+
 const db = require('../config/db');
 
 // --- FUNCIÓN 'crearVenta' SIMPLIFICADA Y CORREGIDA ---
 exports.crearVenta = async (req, res) => {
-  // AHORA: Ya no necesitamos separar 'productos' y 'combos'. El carrito puede enviar todo junto.
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
+  
   const { total, metodo_pago, items, clienteId, recompensaUsadaId } = req.body;
-  const id_empleado = req.user.id;
+  const id_empleado = req.user.id; // Asumimos que el empleado también está autenticado
 
   if (!items || items.length === 0) {
     return res.status(400).json({ msg: 'El ticket de venta no puede estar vacío.' });
@@ -13,23 +16,32 @@ exports.crearVenta = async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    const ventaQuery = 'INSERT INTO ventas (total, metodo_pago, id_empleado, cliente_id) VALUES ($1, $2, $3, $4) RETURNING id';
-    const ventaResult = await db.query(ventaQuery, [total, metodo_pago, id_empleado, clienteId]);
+    // <--- MODIFICADO (Añadimos tienda_id y $5)
+    const ventaQuery = `
+      INSERT INTO ventas (total, metodo_pago, id_empleado, cliente_id, tienda_id) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING id
+    `;
+    const ventaValues = [total, metodo_pago, id_empleado, clienteId, tiendaId]; // <--- MODIFICADO
+    
+    const ventaResult = await db.query(ventaQuery, ventaValues);
     const nuevaVentaId = ventaResult.rows[0].id;
 
-    // --- LÓGICA UNIFICADA ---
-    // Tratamos a los productos y combos exactamente igual, ya que ambos están en la tabla 'productos'.
-    // Esto simplifica el código y asegura que los reportes sean correctos.
+    // --- LÓGICA UNIFICADA (Sin cambios, ya que depende de nuevaVentaId) ---
     for (const item of items) {
       const detalleQuery = 'INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
-      // Usamos el ID y precio del item (sea producto o combo) directamente.
       await db.query(detalleQuery, [nuevaVentaId, item.id, item.cantidad, item.precio]);
     }
 
-    // La lógica de recompensas se mantiene intacta
+    // --- LÓGICA DE RECOMPENSAS (Añadimos tienda_id) ---
     if (clienteId && recompensaUsadaId) {
-      const recompensaQuery = 'INSERT INTO usuarios_recompensas (usuario_id, recompensa_id, venta_id) VALUES ($1, $2, $3);';
-      await db.query(recompensaQuery, [clienteId, recompensaUsadaId, nuevaVentaId]);
+      // <--- MODIFICADO (Añadimos tienda_id y $4)
+      const recompensaQuery = `
+        INSERT INTO usuarios_recompensas (usuario_id, recompensa_id, venta_id, tienda_id) 
+        VALUES ($1, $2, $3, $4);
+      `;
+      // <--- MODIFICADO (Pasamos el tiendaId)
+      await db.query(recompensaQuery, [clienteId, recompensaUsadaId, nuevaVentaId, tiendaId]);
     }
 
     await db.query('COMMIT');
@@ -44,15 +56,14 @@ exports.crearVenta = async (req, res) => {
 
 // --- FUNCIÓN 'obtenerReportePorProducto' CORREGIDA ---
 exports.obtenerReportePorProducto = async (req, res) => {
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
   const { inicio, fin } = req.query;
   
-  // Nota para el Frontend: Las fechas deben llegar en formato 'YYYY-MM-DD'.
   if (!inicio || !fin) {
     return res.status(400).json({ msg: 'Las fechas de inicio y fin son requeridas (formato YYYY-MM-DD).' });
   }
 
   try {
-    // Esta consulta ahora funciona para productos y combos por igual.
     const reporteQuery = `
       SELECT 
         pr.id, 
@@ -62,28 +73,34 @@ exports.obtenerReportePorProducto = async (req, res) => {
       FROM detalles_venta dv
       JOIN productos pr ON dv.id_producto = pr.id
       JOIN ventas v ON dv.id_venta = v.id
-      WHERE v.fecha::date BETWEEN $1 AND $2
+      WHERE v.fecha::date BETWEEN $1 AND $2 AND v.tienda_id = $3 -- <--- MODIFICADO
       GROUP BY pr.id, pr.nombre 
       ORDER BY ingreso_total DESC;
     `;
-    const result = await db.query(reporteQuery, [inicio, fin]);
+    // <--- MODIFICADO (Pasamos el tiendaId)
+    const result = await db.query(reporteQuery, [inicio, fin, tiendaId]); 
     res.json(result.rows);
   } catch (err) {
     console.error("Error al generar reporte detallado:", err.message);
-    // Añadimos un mensaje de error más específico para ayudar a depurar.
     res.status(500).send('Error del Servidor. Verifica que las fechas estén en formato YYYY-MM-DD.');
   }
 };
 
-// --- OTRAS FUNCIONES (sin cambios) ---
+// --- OTRAS FUNCIONES (Con cambios) ---
 
 exports.obtenerReporteVentas = async (req, res) => {
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
+
   try {
     const reporteQuery = `
       SELECT DATE(fecha) as dia, SUM(total) as total_ventas 
-      FROM ventas GROUP BY DATE(fecha) ORDER BY dia ASC;
+      FROM ventas 
+      WHERE tienda_id = $1 -- <--- MODIFICADO
+      GROUP BY DATE(fecha) 
+      ORDER BY dia ASC;
     `;
-    const result = await db.query(reporteQuery);
+    // <--- MODIFICADO (Pasamos el tiendaId)
+    const result = await db.query(reporteQuery, [tiendaId]); 
     res.json(result.rows);
   } catch (err) {
     console.error(err.message);
@@ -92,15 +109,18 @@ exports.obtenerReporteVentas = async (req, res) => {
 };
 
 exports.obtenerVentasDelDia = async (req, res) => {
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
+
   try {
     const query = `
       SELECT v.id, v.fecha, v.total, v.metodo_pago, u.nombre as nombre_empleado
       FROM ventas v
       JOIN usuarios u ON v.id_empleado = u.id
-      WHERE DATE(v.fecha) = CURRENT_DATE
+      WHERE DATE(v.fecha) = CURRENT_DATE AND v.tienda_id = $1 -- <--- MODIFICADO
       ORDER BY v.fecha DESC;
     `;
-    const result = await db.query(query);
+    // <--- MODIFICADO (Pasamos el tiendaId)
+    const result = await db.query(query, [tiendaId]); 
     res.json(result.rows);
   } catch (err) {
     console.error(err.message);

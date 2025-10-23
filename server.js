@@ -2,22 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+// Importamos el middleware
+const verificarTienda = require('./middlewares/verificarTienda');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- CONFIGURACIÓN DE CORS ---
-// Se añaden múltiples puertos locales para evitar futuros bloqueos
 const allowedOrigins = [
-  'https://tito-cafe-frontend.onrender.com', // Tu sitio en producción
-  'http://localhost:5173',                  // Puerto de desarrollo por defecto
-  'http://localhost:5174',                  // Puerto que estás usando ahora
-  'http://localhost:5175',                  // Otro puerto que has usado
-  'http://localhost:5176'                   // Un puerto extra, por si acaso
+  'https://tito-cafe-frontend.onrender.com', 
+  'https://miss-donitas-frontend.onrender.com', // Frontend de Miss Donitas
+  'http://localhost:5173',                  
+  'http://localhost:5174',                  
+  'http://localhost:5175',                  
+  'http://localhost:5176'
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permite peticiones sin origen (como las de Postman o apps móviles) y las de la lista
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -26,7 +28,8 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'], 
+  // Permitimos el nuevo encabezado 'x-tienda-id'
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'x-tienda-id'], 
 };
 
 // --- Middlewares ---
@@ -34,18 +37,20 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- Rutas ---
+
+// La autenticación NO lleva el middleware de tienda
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/productos', require('./routes/productosRoutes'));
-app.use('/api/ventas', require('./routes/ventasRoutes'));
-app.use('/api/usuarios', require('./routes/usuarios'));
-app.use('/api/pedidos', require('./routes/pedidosRoutes'));
-app.use('/api/recompensas', require('./routes/recompensasRoutes'));
-app.use('/api/envio', require('./routes/envioRoutes'));
-app.use('/api/payments', require('./routes/paymentRoutes'));
-app.use('/api/combos', require('./routes/combosRoutes'));
+
+// Todas las demás rutas SÍ llevan el middleware 'verificarTienda'
+app.use('/api/productos', verificarTienda, require('./routes/productosRoutes'));
+app.use('/api/ventas', verificarTienda, require('./routes/ventasRoutes'));
+app.use('/api/usuarios', verificarTienda, require('./routes/usuarios'));
+app.use('/api/pedidos', verificarTienda, require('./routes/pedidosRoutes'));
+app.use('/api/recompensas', verificarTienda, require('./routes/recompensasRoutes'));
+app.use('/api/payments', verificarTienda, require('./routes/paymentRoutes'));
+app.use('/api/combos', verificarTienda, require('./routes/combosRoutes'));
 
 // --- Iniciar Servidor ---
 app.listen(PORT, () => {
   console.log(`🟢 Servidor Express corriendo en el puerto ${PORT}`);
 });
-

@@ -5,6 +5,7 @@ require('dotenv').config();
 
 //=================================================================
 // REGISTRAR UN NUEVO USUARIO (CLIENTE)
+// (SIN CAMBIOS - El registro es global)
 //=================================================================
 exports.register = async (req, res) => {
   const { nombre, email, password } = req.body;
@@ -44,6 +45,7 @@ exports.register = async (req, res) => {
 
 //=================================================================
 // INICIAR SESIÓN (LOGIN)
+// (SIN CAMBIOS - El login es global)
 //=================================================================
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -81,13 +83,18 @@ exports.login = async (req, res) => {
 
 //=================================================================
 // BUSCAR CLIENTE Y SUS RECOMPENSAS (PARA EMPLEADOS)
+// (MODIFICADO - Ahora filtra recompensas por tienda_id)
 //=================================================================
 exports.findUserByEmail = async (req, res) => {
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
   const { email } = req.body;
+
   if (!email) {
     return res.status(400).json({ msg: 'El email es requerido.' });
   }
+
   try {
+    // PASO 1: Buscar al cliente (esto es global, está bien)
     const userQuery = 'SELECT id, nombre, email FROM usuarios WHERE email = $1 AND rol = \'Cliente\'';
     const userResult = await db.query(userQuery, [email]);
     if (userResult.rows.length === 0) {
@@ -95,10 +102,36 @@ exports.findUserByEmail = async (req, res) => {
     }
     const cliente = userResult.rows[0];
 
-    const recompensasQuery = 'SELECT * FROM recompensas WHERE id_cliente = $1 AND utilizado = FALSE';
-    const recompensasResult = await db.query(recompensasQuery, [cliente.id]);
+    // --- LÓGICA DE RECOMPENSAS (Traída de recompensasController) ---
+    
+    // PASO 2: Contar sus compras EN ESTA TIENDA
+    const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1 AND tienda_id = $2';
+    const comprasResult = await db.query(comprasQuery, [cliente.id, tiendaId]);
+    const totalCompras = parseInt(comprasResult.rows[0].count, 10);
 
-    res.json({ cliente, recompensas: recompensasResult.rows });
+    // PASO 3: Contar recompensas usadas EN ESTA TIENDA
+    const usadasQuery = 'SELECT COUNT(*) FROM usuarios_recompensas WHERE usuario_id = $1 AND recompensa_id = 1 AND tienda_id = $2';
+    const usadasResult = await db.query(usadasQuery, [cliente.id, tiendaId]);
+    let recompensasUsadas = 0;
+    if (usadasResult.rows.length > 0) {
+      recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
+    }
+
+    // PASO 4: Calcular y enviar el resultado
+    const recompensasGanadas = Math.floor(totalCompras / 10);
+    const recompensasDisponibles = recompensasGanadas - recompensasUsadas;
+    
+    let recompensasParaEnviar = [];
+    if (recompensasDisponibles > 0) {
+      recompensasParaEnviar.push({
+        id: 1, // ID de la recompensa de café
+        nombre: 'Café o Frappe Gratis',
+        cantidad: recompensasDisponibles
+      });
+    }
+
+    res.json({ cliente, recompensas: recompensasParaEnviar });
+
   } catch (err) {
     console.error("Error en findUserByEmail:", err.message);
     res.status(500).send('Error del Servidor');
@@ -106,10 +139,11 @@ exports.findUserByEmail = async (req, res) => {
 };
 
 //=================================================================
-// GESTIONAR DIRECCIÓN GUARDADA DEL CLIENTE (VERSIÓN ACTUALIZADA)
+// GESTIONAR DIRECCIÓN GUARDADA DEL CLIENTE
+// (SIN CAMBIOS - La dirección es global)
 //=================================================================
 
-// Obtiene la dirección guardada, incluyendo la referencia
+// Obtiene la dirección guardada
 exports.obtenerMiDireccion = async (req, res) => {
   try {
     const query = 'SELECT direccion_guardada FROM usuarios WHERE id = $1';
@@ -118,7 +152,7 @@ exports.obtenerMiDireccion = async (req, res) => {
     if (result.rows.length > 0 && result.rows[0].direccion_guardada) {
       res.json(result.rows[0].direccion_guardada);
     } else {
-      res.json(null); // Envía null si no hay nada guardado
+      res.json(null);
     }
   } catch (error) {
     console.error("Error en obtenerMiDireccion:", error.message);
@@ -126,9 +160,8 @@ exports.obtenerMiDireccion = async (req, res) => {
   }
 };
 
-// Actualiza la dirección Y la referencia del cliente
+// Actualiza la dirección
 exports.actualizarMiDireccion = async (req, res) => {
-  // Se extraen todos los campos, incluyendo la referencia (puede ser null)
   const { lat, lng, description, referencia } = req.body;
   const id_cliente = req.user.id;
 
@@ -136,7 +169,6 @@ exports.actualizarMiDireccion = async (req, res) => {
     return res.status(400).json({ msg: 'Faltan datos de la dirección.' });
   }
 
-  // Se construye el objeto completo que se guardará en la base de datos
   const direccionCompleta = {
     lat,
     lng,
@@ -146,7 +178,6 @@ exports.actualizarMiDireccion = async (req, res) => {
 
   try {
     const query = 'UPDATE usuarios SET direccion_guardada = $1 WHERE id = $2 RETURNING direccion_guardada';
-    // Se envía el objeto completo a la columna de tipo JSONB
     const result = await db.query(query, [direccionCompleta, id_cliente]);
 
     res.json(result.rows[0].direccion_guardada);

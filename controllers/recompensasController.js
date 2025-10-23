@@ -1,20 +1,27 @@
+// Archivo: controllers/recompensasController.js
+
 const db = require('../config/db');
 
 // --- FUNCIÓN PARA CLIENTES (CORRECCIÓN FINAL) ---
-// Ahora calcula las recompensas ganadas en lugar de solo buscar las usadas.
 exports.obtenerMisRecompensas = async (req, res) => {
-  // El ID del usuario que ha iniciado sesión se obtiene del middleware de autenticación
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
   const usuarioId = req.user.id;
 
   try {
-    // PASO 1: Contar las compras totales del cliente desde la tabla 'pedidos'
-    const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
-    const comprasResult = await db.query(comprasQuery, [usuarioId]);
+    // PASO 1: Contar las compras totales del cliente EN ESTA TIENDA
+    const comprasQuery = `
+      SELECT COUNT(*) FROM pedidos 
+      WHERE id_cliente = $1 AND tienda_id = $2
+    `; // <--- MODIFICADO
+    const comprasResult = await db.query(comprasQuery, [usuarioId, tiendaId]); // <--- MODIFICADO
     const totalCompras = parseInt(comprasResult.rows[0].count, 10);
 
-    // PASO 2: Contar las recompensas de "café gratis" que ya ha usado
-    const usadasQuery = 'SELECT COUNT(*) FROM usuarios_recompensas WHERE usuario_id = $1 AND recompensa_id = 1';
-    const usadasResult = await db.query(usadasQuery, [usuarioId]);
+    // PASO 2: Contar las recompensas de "café gratis" que ya ha usado EN ESTA TIENDA
+    const usadasQuery = `
+      SELECT COUNT(*) FROM usuarios_recompensas 
+      WHERE usuario_id = $1 AND recompensa_id = 1 AND tienda_id = $2
+    `; // <--- MODIFICADO
+    const usadasResult = await db.query(usadasQuery, [usuarioId, tiendaId]); // <--- MODIFICADO
     const recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
 
     // PASO 3: Calcular las recompensas que tiene disponibles
@@ -23,16 +30,14 @@ exports.obtenerMisRecompensas = async (req, res) => {
 
     let recompensasParaEnviar = [];
     if (recompensasDisponibles > 0) {
-      // Si tiene recompensas, las añadimos a la respuesta
       recompensasParaEnviar.push({
-        id: 1, // ID de la recompensa
+        id: 1, 
         nombre: 'Café o Frappe Gratis',
-        descripcion: `¡Felicidades! Has ganado ${recompensasDisponibles} bebida(s) gratis por tus compras. Muéstrale esta pantalla al empleado para canjearla.`,
+        descripcion: `¡Felicidades! Has ganado ${recompensasDisponibles} bebida(s) gratis en esta tienda. Muéstrale esta pantalla al empleado para canjearla.`,
         cantidad: recompensasDisponibles
       });
     }
     
-    // Enviamos la lista (que puede estar vacía si no tiene recompensas)
     res.json(recompensasParaEnviar);
 
   } catch (error) {
@@ -42,17 +47,18 @@ exports.obtenerMisRecompensas = async (req, res) => {
 };
 
 
-// --- FUNCIÓN DE BÚSQUEDA PARA EMPLEADOS (YA ESTÁ CORRECTA) ---
+// --- FUNCIÓN DE BÚSQUEDA PARA EMPLEADOS (CORREGIDA) ---
 exports.buscarRecompensasPorEmail = async (req, res) => {
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ msg: 'El correo es requerido.' });
   }
 
-  console.log(`[REWARDS] Iniciando búsqueda para email: ${email}`);
+  console.log(`[REWARDS] Iniciando búsqueda para email: ${email} EN TIENDA: ${tiendaId}`); // <--- MODIFICADO
 
   try {
-    // --- PASO 1: Buscar al cliente ---
+    // --- PASO 1: Buscar al cliente (Esto es global, está bien) ---
     let cliente;
     try {
       console.log("[REWARDS] PASO 1: Buscando usuario en la tabla 'usuarios'...");
@@ -70,30 +76,36 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
       throw new Error("Error al buscar el cliente. Revisa que la tabla 'usuarios' exista.");
     }
 
-    // --- PASO 2: Contar sus compras ---
+    // --- PASO 2: Contar sus compras EN ESTA TIENDA ---
     let totalCompras = 0;
     try {
-      console.log("[REWARDS] PASO 2: Contando pedidos en la tabla 'pedidos'...");
-      const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1';
-      const comprasResult = await db.query(comprasQuery, [cliente.id]);
+      console.log(`[REWARDS] PASO 2: Contando pedidos en 'pedidos' para tienda ${tiendaId}...`); // <--- MODIFICADO
+      const comprasQuery = `
+        SELECT COUNT(*) FROM pedidos 
+        WHERE id_cliente = $1 AND tienda_id = $2
+      `; // <--- MODIFICADO
+      const comprasResult = await db.query(comprasQuery, [cliente.id, tiendaId]); // <--- MODIFICADO
       totalCompras = parseInt(comprasResult.rows[0].count, 10);
       console.log(`[REWARDS] PASO 2: Total de pedidos encontrados: ${totalCompras}`);
     } catch (e) {
-      console.error("[REWARDS] FALLO EN PASO 2. Revisa que la tabla 'pedidos' y la columna 'id_cliente' existan. Causa:", e.message);
+      console.error("[REWARDS] FALLO EN PASO 2. Causa:", e.message);
     }
 
-    // --- PASO 3: Contar recompensas usadas ---
+    // --- PASO 3: Contar recompensas usadas EN ESTA TIENDA ---
     let recompensasUsadas = 0;
     try {
-      console.log("[REWARDS] PASO 3: Contando en 'usuarios_recompensas'...");
-      const usadasQuery = 'SELECT COUNT(*) FROM usuarios_recompensas WHERE usuario_id = $1 AND recompensa_id = 1';
-      const usadasResult = await db.query(usadasQuery, [cliente.id]);
+      console.log(`[REWARDS] PASO 3: Contando en 'usuarios_recompensas' para tienda ${tiendaId}...`); // <--- MODIFICADO
+      const usadasQuery = `
+        SELECT COUNT(*) FROM usuarios_recompensas 
+        WHERE usuario_id = $1 AND recompensa_id = 1 AND tienda_id = $2
+      `; // <--- MODIFICADO
+      const usadasResult = await db.query(usadasQuery, [cliente.id, tiendaId]); // <--- MODIFICADO
       if (usadasResult.rows.length > 0) {
         recompensasUsadas = parseInt(usadasResult.rows[0].count, 10);
       }
       console.log(`[REWARDS] PASO 3: Recompensas usadas encontradas: ${recompensasUsadas}`);
     } catch (e) {
-      console.error("[REWARDS] FALLO EN PASO 3. Revisa que la tabla 'usuarios_recompensas' exista. Causa:", e.message);
+      console.error("[REWARDS] FALLO EN PASO 3. Causa:", e.message);
     }
 
     // --- PASO 4: Calcular y enviar el resultado ---
@@ -106,7 +118,7 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
       recompensasParaEnviar.push({
         id: 1,
         nombre: 'Café o Frappe Gratis',
-        descripcion: `Felicidades, tienes ${recompensasDisponibles} bebida(s) gratis.`,
+        descripcion: `Felicidades, tienes ${recompensasDisponibles} bebida(s) gratis en esta tienda.`,
         cantidad: recompensasDisponibles
       });
     }
@@ -125,9 +137,15 @@ exports.buscarRecompensasPorEmail = async (req, res) => {
 
 // --- OTRAS FUNCIONES (SE MANTIENEN IGUAL) ---
 exports.obtenerRecompensasDisponibles = async (req, res) => {
+  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
+
   try {
-    const query = 'SELECT * FROM recompensas WHERE activo = true';
-    const { rows } = await db.query(query);
+    // AHORA: Obtenemos solo las recompensas (promociones) de ESTA tienda
+    const query = `
+      SELECT * FROM recompensas 
+      WHERE activo = true AND tienda_id = $1
+    `; // <--- MODIFICADO
+    const { rows } = await db.query(query, [tiendaId]); // <--- MODIFICADO
     res.json(rows);
   } catch (error) {
     console.error('Error al obtener recompensas disponibles:', error.message);
