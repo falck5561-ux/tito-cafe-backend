@@ -1,27 +1,32 @@
-// En: middlewares/authMiddleware.js
+// En: middlewares/authMiddleware.js (CORREGIDO)
 
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 module.exports = function(req, res, next) {
-  // 1. Obtener la cabecera 'Authorization'
-  const authHeader = req.header('Authorization');
+  // 1. Obtener el token directamente de la cabecera 'x-auth-token'
+  const token = req.header('x-auth-token');
 
-  // 2. Verificar si existe y tiene el formato 'Bearer <token>'
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ msg: 'No hay token o el formato es incorrecto, permiso denegado' });
+  // 2. Verificar si el token existe
+  if (!token) {
+    // Si no hay token, permiso denegado
+    return res.status(401).json({ msg: 'No hay token, permiso denegado' });
   }
 
   try {
-    // 3. Extraer el token (quitando "Bearer " del inicio)
-    const token = authHeader.split(' ')[1];
-
-    // 4. Verificar el token con la clave secreta
+    // 3. Verificar el token con la clave secreta
+    // jwt.verify descifra el token y devuelve el payload original (el objeto { user: { id, rol } })
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // 4. Añadir el objeto 'user' (que viene dentro de 'decoded') al objeto 'req'
+    // para que las siguientes funciones (como roleMiddleware o los controladores) puedan usarlo
     req.user = decoded.user;
+
+    // 5. Permitir que la solicitud continúe
     next();
 
   } catch (err) {
+    // Si jwt.verify falla (porque el token es inválido o expiró), entra aquí
     res.status(401).json({ msg: 'Token no es válido' });
   }
 };
