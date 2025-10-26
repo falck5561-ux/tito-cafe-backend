@@ -21,9 +21,15 @@ router.post('/', [authMiddleware, checkRole(['Jefe'])], combosController.crearCo
 // PUT /api/combos/:id -> Actualiza un combo existente
 router.put('/:id', [authMiddleware, checkRole(['Jefe'])], combosController.actualizarCombo);
 
-// DELETE /api/combos/:id -> Elimina un combo
-router.delete('/:id', [authMiddleware, checkRole(['Jefe'])], combosController.eliminarCombo);
+// --- CAMBIO DE "DELETE" A "SOFT DELETE" ---
+// En lugar de borrar, vamos a desactivar el combo.
+// Usamos PATCH (actualización parcial) y una ruta más descriptiva.
 
+// DELETE /api/combos/:id -> Elimina un combo (RUTA ANTIGUA COMENTADA)
+// router.delete('/:id', [authMiddleware, checkRole(['Jefe'])], combosController.eliminarCombo);
+
+// PATCH /api/combos/:id/desactivar -> Desactiva (soft delete) un combo
+router.patch('/:id/desactivar', [authMiddleware, checkRole(['Jefe'])], combosController.desactivarCombo);
+// ------------------------------------------
 
 module.exports = router;
-
