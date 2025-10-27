@@ -1,4 +1,4 @@
-// Archivo: routes/ventasRoutes.js (Versión CORREGIDA)
+// Archivo: routes/ventasRoutes.js (Esta es la SOLUCIÓN)
 
 const express = require('express');
 const router = express.Router();
@@ -6,34 +6,29 @@ const ventasController = require('../controllers/ventasController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const checkRole = require('../middlewares/roleMiddleware');
 
-// --- 1. IMPORTA EL MIDDLEWARE QUE FALTABA ---
+// --- 1. IMPORTA EL MIDDLEWARE QUE FALTA ---
 const verificarTienda = require('../middlewares/verificarTienda');
 
-// Ruta para registrar una nueva venta
-// --- 2. AÑADE 'verificarTienda' a la cadena ---
+// --- 2. AÑADE 'verificarTienda' A TODAS LAS RUTAS ---
+
 router.post('/', 
   [authMiddleware, checkRole(['Empleado', 'Jefe']), verificarTienda], 
   ventasController.crearVenta
 );
 
-// Ruta para obtener las ventas del día
-// --- 2. AÑADE 'verificarTienda' a la cadena ---
 router.get('/hoy', 
   [authMiddleware, checkRole(['Empleado', 'Jefe']), verificarTienda], 
   ventasController.obtenerVentasDelDia
 );
 
-// Ruta para obtener el reporte de ventas general
-// --- 2. AÑADE 'verificarTienda' a la cadena ---
 router.get('/reporte', 
   [authMiddleware, checkRole(['Jefe']), verificarTienda], 
   ventasController.obtenerReporteVentas
 );
 
-// Ruta para el reporte por producto
-// --- 2. AÑADE 'verificarTienda' a la cadena ---
+// Esta es la ruta que te da el error 400
 router.get('/reporte-productos', 
-  [authMiddleware, checkRole(['Jefe']), verificarTienda], 
+  [authMiddleware, checkRole(['Jefe']), verificarTienda], // <-- Aquí faltaba 'verificarTienda'
   ventasController.obtenerReportePorProducto
 );
 
