@@ -81,8 +81,12 @@ exports.crearPedido = async (req, res) => {
     const totalPedidos = parseInt(countResult.rows[0].count, 10);
 
     let recompensaGenerada = false;
-    if (totalPedidos > 0 && totalPedidos % 10 === 0) {
-      const nombreRecompensa = `¡Felicidades! Café o frappe gratis por tus ${totalPedidos} compras.`;
+    
+    // --- ¡MODIFICACIÓN #1: CAMBIO DE 10 A 20 COMPRAS! ---
+    if (totalPedidos > 0 && totalPedidos % 20 === 0) {
+      
+      // --- ¡MODIFICACIÓN #2: CAMBIO DE TEXTO DE LA RECOMPENSA! ---
+      const nombreRecompensa = `¡Felicidades! Un Tito Pikulito O un Tito Mojadito gratis por tus ${totalPedidos} compras.`;
       
       // <--- MODIFICADO (Guardamos la recompensa CON el ID de la tienda)
       await db.query(
@@ -208,10 +212,10 @@ exports.calcularCostoEnvio = async (req, res) => {
   let originLat;
   let originLng;
 
-  if (tiendaId === 1) {
+  if (tiendaId === '1') { // Comparar como string, ya que viene de headers
     originLat = process.env.STORE_LATITUDE_1;
     originLng = process.env.STORE_LONGITUDE_1;
-  } else if (tiendaId === 2) {
+  } else if (tiendaId === '2') { // Comparar como string
     originLat = process.env.STORE_LATITUDE_2;
     originLng = process.env.STORE_LONGITUDE_2;
   } else {
