@@ -93,12 +93,16 @@ const guardarCombo = async (req, res) => {
   const { id } = req.params; 
   const { titulo, descripcion, precio, imagenes, descuento_porcentaje, activa, oferta_activa } = req.body;
   const imagen_url = (imagenes && imagenes.length > 0) ? imagenes[0] : null;
+  
+  // AQUÍ ES DONDE SE GENERA EL ERROR 400
   if (!titulo || !precio) {
     return res.status(400).json({ msg: 'El título y el precio son obligatorios.' });
   }
+  
   try {
     let query, values;
     if (id) {
+      // Lógica de ACTUALIZAR (UPDATE)
       query = `
         UPDATE productos 
         SET nombre = $1, descripcion = $2, precio = $3, imagen_url = $4, 
@@ -107,6 +111,7 @@ const guardarCombo = async (req, res) => {
         RETURNING *`;
       values = [titulo, descripcion, precio, imagen_url, descuento_porcentaje || 0, oferta_activa, activa, id, tiendaId];
     } else {
+      // Lógica de CREAR (INSERT)
       query = `
         INSERT INTO productos (nombre, descripcion, precio, categoria, imagen_url, descuento_porcentaje, en_oferta, esta_activo, tienda_id) 
         VALUES ($1, $2, $3, 'Combo', $4, $5, $6, $7, $8) 
@@ -119,6 +124,7 @@ const guardarCombo = async (req, res) => {
     }
     res.status(id ? 200 : 201).json(result.rows[0]);
   } catch (err) {
+    // Si la indentación (NBSP) no se hubiera corregido, esto daría un ERROR 500
     console.error(`Error al ${id ? 'actualizar' : 'crear'} combo:`, err.message);
     res.status(500).send('Error del Servidor');
   }
@@ -164,4 +170,3 @@ exports.desactivarCombo = async (req, res) => {
 // Esta función ya no la usaremos, pero la dejamos comentada
 // exports.eliminarCombo = async (req, res) => { ... }
 // =============================================================
-
