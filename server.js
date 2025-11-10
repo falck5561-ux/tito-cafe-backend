@@ -17,7 +17,7 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://localhost:5175',
   'http://localhost:5176',
-  'http://localhost:5179' // <-- ¡AÑADE ESTA LÍNEA!
+  'http://localhost:5179'
 ];
 
 const corsOptions = {
@@ -29,7 +29,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  // 👇👇 ¡AQUÍ ESTÁ LA CORRECCIÓN! 👇👇
+  // CORRECCIÓN: Añadido 'PATCH' para la función de desactivar
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   // Permitimos el nuevo encabezado 'x-tienda-id'
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'x-tienda-id'],
