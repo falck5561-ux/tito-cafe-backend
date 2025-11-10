@@ -11,11 +11,11 @@ const PORT = process.env.PORT || 3000;
 
 // --- CONFIGURACIÓN DE CORS ---
 const allowedOrigins = [
-  'https://tito-cafe-frontend.onrender.com', 
+  'https://tito-cafe-frontend.onrender.com',
   'https://miss-donitas-frontend.onrender.com', // Frontend de Miss Donitas
-  'http://localhost:5173',                  
-  'http://localhost:5174',                  
-  'http://localhost:5175',                  
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
   'http://localhost:5176',
   'http://localhost:5179' // <-- ¡AÑADE ESTA LÍNEA!
 ];
@@ -31,7 +31,7 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   // Permitimos el nuevo encabezado 'x-tienda-id'
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'x-tienda-id'], 
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'x-tienda-id'],
 };
 
 // --- Middlewares ---
