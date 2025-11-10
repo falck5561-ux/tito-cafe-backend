@@ -5,12 +5,12 @@ exports.obtenerProductos = async (req, res) => {
   const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
   
   try {
-    // ✅ CORRECCIÓN: La consulta ya no tiene espacios de indentación (NBSP)
+    // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP)
     const query = `
-SELECT * FROM productos 
-WHERE esta_activo = true AND categoria != 'Combo' AND tienda_id = $1 
-ORDER BY nombre ASC
-    `; // <--- CORREGIDO
+      SELECT * FROM productos 
+      WHERE esta_activo = true AND categoria != 'Combo' AND tienda_id = $1 
+      ORDER BY nombre ASC
+    `;
     
     const result = await db.query(query, [tiendaId]); // <--- MODIFICADO (Pasamos el ID de la tienda)
     res.json(result.rows);
@@ -78,11 +78,11 @@ exports.crearProducto = async (req, res) => {
   }
 
   try {
-    // ✅ CORRECCIÓN: Consulta sin indentación NBSP
+    // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP)
     const query = `
-INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta, esta_activo, tienda_id) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9) 
-RETURNING *`; // <--- CORREGIDO
+      INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta, esta_activo, tienda_id) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9) 
+      RETURNING *`;
     
     const values = [
       nombre,
@@ -112,12 +112,12 @@ exports.actualizarProducto = async (req, res) => {
   try {
     const { nombre, descripcion, precio, stock, categoria, imagen_url, descuento_porcentaje, en_oferta } = req.body;
 
-    // ✅ CORRECCIÓN: Consulta sin indentación NBSP
+    // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP)
     const query = `
-UPDATE productos 
-SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagen_url = $6, descuento_porcentaje = $7, en_oferta = $8 
-WHERE id = $9 AND tienda_id = $10
-RETURNING *`; // <--- CORREGIDO
+      UPDATE productos 
+      SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagen_url = $6, descuento_porcentaje = $7, en_oferta = $8 
+      WHERE id = $9 AND tienda_id = $10
+      RETURNING *`;
     
     const values = [
       nombre,
@@ -150,11 +150,11 @@ exports.eliminarProducto = async (req, res) => {
   const { id } = req.params; // <--- MODIFICADO
 
   try {
-    // ✅ CORRECCIÓN: Consulta sin indentación NBSP
+    // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP)
     const query = `
-UPDATE productos SET esta_activo = false 
-WHERE id = $1 AND tienda_id = $2 
-RETURNING *`; // <--- CORREGIDO
+      UPDATE productos SET esta_activo = false 
+      WHERE id = $1 AND tienda_id = $2 
+      RETURNING *`;
     
     const result = await db.query(query, [id, tiendaId]); // <--- MODIFICADO (Pasamos ambos IDs)
     
@@ -198,7 +198,7 @@ const verificarPropiedadGrupo = async (grupoId, tiendaId) => {
 
 // Verifica si una OPCION pertenece a la tienda del admin
 const verificarPropiedadOpcion = async (opcionId, tiendaId) => {
-  // ✅ CORRECCIÓN: Se quitó la 'A' suelta que causaba un error de sintaxis
+  // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP) y sintaxis
   const result = await db.query(
     `SELECT o.id FROM opciones_producto o
      JOIN grupos_opciones_producto g ON o.grupo_id = g.id
@@ -223,9 +223,10 @@ exports.crearGrupoOpcion = async (req, res) => {
       return res.status(403).json({ msg: 'Acción no autorizada' });
     }
 
+    // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP)
     const query = `
-INSERT INTO grupos_opciones_producto (producto_id, nombre, tipo_seleccion)
-VALUES ($1, $2, $3) RETURNING *
+      INSERT INTO grupos_opciones_producto (producto_id, nombre, tipo_seleccion)
+      VALUES ($1, $2, $3) RETURNING *
     `;
     const result = await db.query(query, [productoId, nombre, tipo_seleccion || 'unico']);
     res.status(201).json(result.rows[0]);
@@ -247,9 +248,10 @@ exports.agregarOpcionAGrupo = async (req, res) => {
       return res.status(403).json({ msg: 'Acción no autorizada' });
     }
 
+    // ✅ CORRECCIÓN: Limpiado de espacios invisibles (NBSP)
     const query = `
-INSERT INTO opciones_producto (grupo_id, nombre, precio_adicional)
-VALUES ($1, $2, $3) RETURNING *
+      INSERT INTO opciones_producto (grupo_id, nombre, precio_adicional)
+      VALUES ($1, $2, $3) RETURNING *
     `;
     const result = await db.query(query, [grupoId, nombre, precio_adicional || 0]);
     res.status(201).json(result.rows[0]);
