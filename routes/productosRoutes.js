@@ -5,44 +5,50 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const checkRole = require('../middlewares/roleMiddleware');
 
 // =======================================================
-// RUTAS PÚBLICAS (Para que cualquiera vea el menú)
+// RUTAS DE LECTURA (Menú y Detalles)
 // =======================================================
 
-// GET /api/productos -> Obtener TODOS los productos
-router.get('/', productosController.obtenerProductos);
+// IMPORTANTE: Usamos 'authMiddleware' aquí también. 
+// Si tu app es pública, asegúrate de que tu middleware maneje usuarios anónimos 
+// o que el frontend envíe un token de invitado. 
+// Si no, el controlador no sabrá cuál es el 'tiendaId' y dará error 404.
 
-// GET /api/productos/:id -> Obtener UN producto (también público)
-router.get('/:id', productosController.obtenerProductoPorId);
+// Obtener TODOS los productos
+router.get('/', authMiddleware, productosController.obtenerProductos);
+
+// Obtener UN producto por ID (con sus grupos y opciones)
+// 🚨 Esta es la ruta que fallaba en el video (daba 404)
+router.get('/:id', authMiddleware, productosController.obtenerProductoPorId);
+
 
 // =======================================================
-// RUTAS DE ADMINISTRACIÓN (Protegidas por token y rol)
+// RUTAS DE ADMINISTRACIÓN (Crear, Editar, Borrar)
 // =======================================================
 
-// POST /api/productos -> Crear un producto (Jefe o Empleado)
+// Crear un producto (Jefe o Empleado)
 router.post('/', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.crearProducto);
 
-// PUT /api/productos/:id -> Actualizar un producto (Jefe o Empleado)
+// Actualizar un producto (Jefe o Empleado)
 router.put('/:id', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.actualizarProducto);
 
-// DELETE /api/productos/:id -> Eliminar un producto (Solo Jefe)
+// Eliminar un producto (Solo Jefe)
 router.delete('/:id', authMiddleware, checkRole(['JEFE']), productosController.eliminarProducto);
 
 
 // =======================================================
-// ¡RUTAS FALTANTES PARA OPCIONES (TOPPINGS)!
+// RUTAS PARA OPCIONES Y GRUPOS (TOPPINGS)
 // =======================================================
 
-// POST /api/productos/:productoId/grupos -> Crear un GRUPO de opciones
+// Crear un GRUPO de opciones (Ej: "Elige tu Jarabe")
 router.post('/:productoId/grupos', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.crearGrupoOpcion);
 
-// POST /api/productos/grupos/:grupoId/opciones -> Agregar una OPCIÓN a un grupo
+// Agregar una OPCIÓN a un grupo (Ej: "Vainilla - $15")
 router.post('/grupos/:grupoId/opciones', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.agregarOpcionAGrupo);
 
-// DELETE /api/productos/grupos/:grupoId -> Eliminar un GRUPO
+// Eliminar un GRUPO completo
 router.delete('/grupos/:grupoId', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.eliminarGrupoOpcion);
 
-// DELETE /api/productos/opciones/:opcionId -> Eliminar una OPCIÓN
+// Eliminar una OPCIÓN específica
 router.delete('/opciones/:opcionId', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.eliminarOpcion);
-
 
 module.exports = router;
