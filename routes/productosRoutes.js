@@ -5,25 +5,29 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const checkRole = require('../middlewares/roleMiddleware');
 
 // =======================================================
-// RUTAS DE LECTURA (Menú y Detalles)
+// RUTAS DE LECTURA (PÚBLICAS - Para que todos vean el menú)
 // =======================================================
 
-// IMPORTANTE: Usamos 'authMiddleware' aquí también. 
-// Si tu app es pública, asegúrate de que tu middleware maneje usuarios anónimos 
-// o que el frontend envíe un token de invitado. 
-// Si no, el controlador no sabrá cuál es el 'tiendaId' y dará error 404.
+/* 🟢 CORRECCIÓN: 
+   Hemos quitado 'authMiddleware' de aquí para que el menú cargue 
+   aunque el usuario no haya iniciado sesión.
+   
+   NOTA: Asegúrate de que 'productosController.obtenerProductos' 
+   no dependa de 'req.user.tiendaId', o fallará.
+*/
 
-// Obtener TODOS los productos
-router.get('/', authMiddleware, productosController.obtenerProductos);
+// Obtener TODOS los productos (Acceso Público)
+router.get('/', productosController.obtenerProductos);
 
-// Obtener UN producto por ID (con sus grupos y opciones)
-// 🚨 Esta es la ruta que fallaba en el video (daba 404)
-router.get('/:id', authMiddleware, productosController.obtenerProductoPorId);
+// Obtener UN producto por ID (Acceso Público)
+router.get('/:id', productosController.obtenerProductoPorId);
 
 
 // =======================================================
-// RUTAS DE ADMINISTRACIÓN (Crear, Editar, Borrar)
+// RUTAS DE ADMINISTRACIÓN (PROTEGIDAS - Crear, Editar, Borrar)
 // =======================================================
+
+// Estas rutas SÍ requieren login (authMiddleware) y rol (checkRole)
 
 // Crear un producto (Jefe o Empleado)
 router.post('/', authMiddleware, checkRole(['JEFE', 'EMPLEADO']), productosController.crearProducto);
