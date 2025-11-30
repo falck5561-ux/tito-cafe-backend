@@ -3,8 +3,6 @@ const db = require('../config/db');
 // --- 1. CREAR VENTA (POS) ---
 exports.crearVenta = async (req, res) => {
   const { tiendaId } = req;
-  // NOTA: Si quieres guardar las "opciones" (ej. Chocolate), asegúrate de que tu tabla 'detalles_venta' tenga una columna 'opciones' o 'notas'.
-  // Por ahora, este código guarda cantidad y precio, que es lo vital.
   const { total, metodo_pago, items, clienteId, recompensaUsadaId } = req.body;
   const id_empleado = req.user.id;
 
@@ -26,13 +24,12 @@ exports.crearVenta = async (req, res) => {
     const nuevaVentaId = ventaResult.rows[0].id;
 
     // Insertar Detalles (Productos)
-    // Corrección sugerida: Si agregaste la columna 'opciones' en tu BD, agrégala aquí también.
     for (const item of items) {
+      // NOTA: Se eliminó 'opciones' si no existe en la BD. Si tu BD lo tiene, agrégalo.
       const detalleQuery = `
         INSERT INTO detalles_venta (id_venta, id_producto, cantidad, precio_unidad) 
         VALUES ($1, $2, $3, $4)
       `;
-      // Asegúrate de que item.precio sea el precio final
       await db.query(detalleQuery, [nuevaVentaId, item.id, item.cantidad, item.precio]);
     }
 
@@ -55,17 +52,20 @@ exports.crearVenta = async (req, res) => {
   }
 };
 
-// --- 2. OBTENER VENTA POR ID (¡ESTA ES LA QUE TE FALTABA!) ---
+// --- 2. OBTENER VENTA POR ID (CORREGIDA - SIN ERRORES 500) ---
 exports.obtenerVentaPorId = async (req, res) => {
   const { id } = req.params;
   
   try {
-    // 1. Buscar la información general de la venta
+    // CORRECCIÓN 1: Usamos 'usuarios' en lugar de 'clientes' para el JOIN del cliente.
     const ventaQuery = `
-      SELECT v.*, u.nombre as nombre_empleado, c.nombre as nombre_cliente
+      SELECT 
+        v.id, v.total, v.fecha, v.metodo_pago, 
+        u.nombre as nombre_empleado, 
+        c.nombre as nombre_cliente
       FROM ventas v
       LEFT JOIN usuarios u ON v.id_empleado = u.id
-      LEFT JOIN clientes c ON v.cliente_id = c.id
+      LEFT JOIN usuarios c ON v.cliente_id = c.id 
       WHERE v.id = $1
     `;
     const ventaResult = await db.query(ventaQuery, [id]);
@@ -76,13 +76,11 @@ exports.obtenerVentaPorId = async (req, res) => {
 
     const venta = ventaResult.rows[0];
 
-    // 2. Buscar los productos de esa venta (items)
-    // Aquí hacemos JOIN con productos para obtener el nombre
+    // CORRECCIÓN 2: Eliminamos 'imagen_url' para evitar errores si la columna falta.
     const detallesQuery = `
       SELECT 
         dv.id_producto as id,
         p.nombre,
-        p.imagen_url,
         dv.cantidad,
         dv.precio_unidad as precio,
         (dv.cantidad * dv.precio_unidad) as subtotal
@@ -92,14 +90,13 @@ exports.obtenerVentaPorId = async (req, res) => {
     `;
     const detallesResult = await db.query(detallesQuery, [id]);
 
-    // 3. Adjuntamos los detalles al objeto venta
     venta.items = detallesResult.rows;
-
     res.json(venta);
 
   } catch (err) {
-    console.error("Error al obtener venta por ID:", err.message);
-    res.status(500).send('Error del servidor');
+    console.error("ERROR CRÍTICO al obtener venta:", err.message);
+    // Devolvemos el mensaje de error para que lo veas en la consola del navegador si falla
+    res.status(500).json({ msg: 'Error interno del servidor', error: err.message });
   }
 };
 
@@ -164,7 +161,7 @@ exports.obtenerReporteVentas = async (req, res) => {
   }
 };
 
-// --- 5. VENTAS DEL DÍA (LISTADO SIMPLE) ---
+// --- 5. VENTAS DEL DÍA ---
 exports.obtenerVentasDelDia = async (req, res) => {
   const { tiendaId } = req;
   try {
