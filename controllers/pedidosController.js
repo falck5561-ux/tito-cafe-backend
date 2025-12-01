@@ -15,7 +15,8 @@ exports.crearPedido = async (req, res) => {
     costo_envio,
     latitude,
     longitude,
-    referencia
+    referencia,
+    telefono
   } = req.body;
 
   if (!req.user || !req.user.id) {
@@ -44,6 +45,7 @@ exports.crearPedido = async (req, res) => {
     const pedidoValues = [
       total, id_cliente, tipo_orden, direccion_entrega || null,
       costo_envio || 0, latitude || null, longitude || null, referencia || null,
+      telefono || null,
       tiendaId
     ];
 
