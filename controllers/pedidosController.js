@@ -16,7 +16,7 @@ exports.crearPedido = async (req, res) => {
     latitude,
     longitude,
     referencia,
-    telefono // <--- EL DATO ES EXTRAÍDO CORRECTAMENTE
+    telefono
   } = req.body;
 
   if (!req.user || !req.user.id) {
@@ -36,7 +36,7 @@ exports.crearPedido = async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    // --- CONSULTA INSERT CORREGIDA (SE INCLUYE 'telefono' en la columna y en los valores) ---
+    // --- CONSULTA INSERT (LIMPIA DE CARACTERES OCULTOS) ---
     const pedidoQuery = `
       INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia, telefono, estado, fecha, tienda_id) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Pendiente', NOW(), $10) 
@@ -53,8 +53,8 @@ exports.crearPedido = async (req, res) => {
       latitude || null, 
       longitude || null, 
       referencia || null,
-      telefono || null, // <--- VALOR DEL TELÉFONO EN POSICIÓN $9
-      tiendaId // <--- VALOR FINAL DE TIENDA_ID EN POSICIÓN $10
+      telefono || null,
+      tiendaId
     ];
 
     const pedidoResult = await db.query(pedidoQuery, pedidoValues);
@@ -71,7 +71,7 @@ exports.crearPedido = async (req, res) => {
       }
     }
 
-    // --- GUARDAR COMBOS (Sin cambios en opciones por ahora) ---
+    // --- GUARDAR COMBOS ---
     if (combos && combos.length > 0) {
       for (const comboVendido of combos) {
         const productosDelComboQuery = 'SELECT id_producto, cantidad FROM combo_productos WHERE id_combo = $1';
@@ -92,9 +92,21 @@ exports.crearPedido = async (req, res) => {
 
     let recompensaGenerada = false;
     
-    // Cada 20 compras
+    // ==========================================================
+    // CORRECCIÓN FATAL: LÓGICA DE RECOMPENSA POR TIENDA
+    // ==========================================================
     if (totalPedidos > 0 && totalPedidos % 20 === 0) {
-      const nombreRecompensa = `¡Felicidades! Un Tito Pikulito O un Tito Mojadito gratis por tus ${totalPedidos} compras.`;
+      
+      let nombreRecompensa = '';
+      
+      // Asume que '1' es la tienda de Tito y '2' es Miss Donitas.
+      if (tiendaId === '1') {
+        nombreRecompensa = `¡Felicidades! Un Tito Pikulito O un Tito Mojadito gratis por tus ${totalPedidos} compras.`;
+      } else if (tiendaId === '2') {
+        nombreRecompensa = `¡Felicidades! Una Dona Especial gratis por tus ${totalPedidos} compras.`; 
+      } else {
+        nombreRecompensa = `¡Felicidades! Tienes una recompensa gratis por tus ${totalPedidos} compras.`; 
+      }
       
       await db.query(
         'INSERT INTO recompensas (id_cliente, nombre, tienda_id) VALUES ($1, $2, $3);', 
@@ -102,7 +114,8 @@ exports.crearPedido = async (req, res) => {
       );
       recompensaGenerada = true;
     }
-
+    // ==========================================================
+    
     await db.query('COMMIT');
 
     res.status(201).json({
@@ -113,7 +126,8 @@ exports.crearPedido = async (req, res) => {
 
   } catch (err) {
     await db.query('ROLLBACK');
-    console.error("Error en crearPedido:", err.message, err.stack);
+    // La línea 60 del error previo ahora debería ser esta consulta, ya limpia:
+    console.error("Error en crearPedido:", err.message, err.stack); 
     res.status(500).send('Error del Servidor al realizar el pedido');
   }
 };
@@ -125,7 +139,6 @@ exports.obtenerPedidos = async (req, res) => {
   const { tiendaId } = req;
 
   try {
-    // CORRECCIÓN: AGREGAMOS P.TELEFONO PARA QUE EL EMPLEADO LO VEA
     const query = `
       SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega, 
              p.latitude, p.longitude, p.referencia, p.telefono, u.nombre AS nombre_cliente, 
@@ -158,7 +171,6 @@ exports.obtenerMisPedidos = async (req, res) => {
   const id_cliente = req.user.id;
 
   try {
-    // CORRECCIÓN: AGREGAMOS P.TELEFONO PARA QUE EL CLIENTE LO VEA EN SU HISTORIAL
     const query = `
       SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.telefono,
              (SELECT json_agg(json_build_object(
