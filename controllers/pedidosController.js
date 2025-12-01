@@ -93,7 +93,7 @@ exports.crearPedido = async (req, res) => {
     let recompensaGenerada = false;
     
     // ==========================================================
-    // CORRECCIÓN FATAL: LÓGICA DE RECOMPENSA POR TIENDA
+    // LÓGICA DE RECOMPENSA POR TIENDA
     // ==========================================================
     if (totalPedidos > 0 && totalPedidos % 20 === 0) {
       
@@ -126,7 +126,6 @@ exports.crearPedido = async (req, res) => {
 
   } catch (err) {
     await db.query('ROLLBACK');
-    // La línea 60 del error previo ahora debería ser esta consulta, ya limpia:
     console.error("Error en crearPedido:", err.message, err.stack); 
     res.status(500).send('Error del Servidor al realizar el pedido');
   }
@@ -146,7 +145,7 @@ exports.obtenerPedidos = async (req, res) => {
                'nombre', pr.nombre, 
                'cantidad', dp.cantidad, 
                'precio', dp.precio_unidad,
-               -- 🚨 CORRECCIÓN APLICADA AQUÍ: Convierte la columna 'opciones' a JSON
+               -- ✅ CORRECCIÓN APLICADA: Convierte la columna 'opciones' a JSON
                'opciones', CASE WHEN dp.opciones IS NOT NULL THEN dp.opciones::json ELSE '[]'::json END
              )) 
              FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id 
@@ -178,7 +177,7 @@ exports.obtenerMisPedidos = async (req, res) => {
                'nombre', pr.nombre, 
                'cantidad', dp.cantidad, 
                'precio', dp.precio_unidad,
-               -- 🚨 CORRECCIÓN APLICADA AQUÍ: Convierte la columna 'opciones' a JSON
+               -- ✅ CORRECCIÓN APLICADA: Convierte la columna 'opciones' a JSON
                'opciones', CASE WHEN dp.opciones IS NOT NULL THEN dp.opciones::json ELSE '[]'::json END
              )) 
              FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id 
