@@ -16,7 +16,7 @@ exports.crearPedido = async (req, res) => {
     latitude,
     longitude,
     referencia,
-    telefono // <--- DATO CLAVE EXTRAÍDO DEL FRONTEND
+    telefono // <--- EL DATO ES EXTRAÍDO CORRECTAMENTE
   } = req.body;
 
   if (!req.user || !req.user.id) {
@@ -36,14 +36,14 @@ exports.crearPedido = async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    // --- CONSULTA INSERT CORREGIDA: AHORA SINCRONIZADA con 10 MARCADORES ($1 a $10) ---
+    // --- CONSULTA INSERT CORREGIDA (SE INCLUYE 'telefono' en la columna y en los valores) ---
     const pedidoQuery = `
       INSERT INTO pedidos (total, id_cliente, tipo_orden, direccion_entrega, costo_envio, latitude, longitude, referencia, telefono, estado, fecha, tienda_id) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Pendiente', NOW(), $10) 
       RETURNING id;
     `;
     
-    // --- VALORES CORREGIDOS: La lista de valores tiene 10 elementos ---
+    // --- VALORES SINCRONIZADOS ---
     const pedidoValues = [
       total, 
       id_cliente, 
@@ -63,12 +63,10 @@ exports.crearPedido = async (req, res) => {
     // --- GUARDAR PRODUCTOS CON OPCIONES ---
     if (productos && productos.length > 0) {
       for (const producto of productos) {
-        // AQUÍ ESTÁ EL CAMBIO: Agregamos 'opciones' al INSERT
         const detalleQuery = `
           INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad, opciones) 
           VALUES ($1, $2, $3, $4, $5);
         `;
-        // producto.opciones viene del frontend (ej: "Chocolate, Nuez")
         await db.query(detalleQuery, [nuevoPedidoId, producto.id, producto.cantidad, producto.precio, producto.opciones || null]);
       }
     }
@@ -82,7 +80,6 @@ exports.crearPedido = async (req, res) => {
         for (const producto of productosEnCombo) {
           const precioItemEnCombo = 0;
           const cantidadTotal = comboVendido.cantidad * producto.cantidad;
-          // Nota: Para combos, si no hay opciones específicas, se guarda NULL por defecto en la columna opciones
           const detalleQuery = 'INSERT INTO detalles_pedido (id_pedido, id_producto, cantidad, precio_unidad) VALUES ($1, $2, $3, $4)';
           await db.query(detalleQuery, [nuevoPedidoId, producto.id_producto, cantidadTotal, precioItemEnCombo]);
         }
@@ -128,7 +125,7 @@ exports.obtenerPedidos = async (req, res) => {
   const { tiendaId } = req;
 
   try {
-    // AQUÍ DEBES AGREGAR P.TELEFONO SI QUIERES QUE APAREZCA EN EL ADMIN
+    // CORRECCIÓN: AGREGAMOS P.TELEFONO PARA QUE EL EMPLEADO LO VEA
     const query = `
       SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega, 
              p.latitude, p.longitude, p.referencia, p.telefono, u.nombre AS nombre_cliente, 
@@ -161,9 +158,9 @@ exports.obtenerMisPedidos = async (req, res) => {
   const id_cliente = req.user.id;
 
   try {
-    // AQUÍ DEBES AGREGAR P.TELEFONO SI QUIERES QUE EL CLIENTE LO VEA EN SU HISTORIAL
+    // CORRECCIÓN: AGREGAMOS P.TELEFONO PARA QUE EL CLIENTE LO VEA EN SU HISTORIAL
     const query = `
-      SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.telefono, 
+      SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.telefono,
              (SELECT json_agg(json_build_object(
                 'nombre', pr.nombre, 
                 'cantidad', dp.cantidad, 
