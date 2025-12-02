@@ -5,7 +5,6 @@ require('dotenv').config();
 
 //=================================================================
 // REGISTRAR UN NUEVO USUARIO (CLIENTE)
-// (SIN CAMBIOS - El registro es global)
 //=================================================================
 exports.register = async (req, res) => {
   const { nombre, email, password } = req.body;
@@ -45,7 +44,6 @@ exports.register = async (req, res) => {
 
 //=================================================================
 // INICIAR SESIÓN (LOGIN)
-// (SIN CAMBIOS - El login es global)
 //=================================================================
 exports.login = async (req, res) => {
   const { email, password } = req.body;
@@ -83,10 +81,9 @@ exports.login = async (req, res) => {
 
 //=================================================================
 // BUSCAR CLIENTE Y SUS RECOMPENSAS (PARA EMPLEADOS)
-// (MODIFICADO - Ahora filtra recompensas por tienda_id)
 //=================================================================
 exports.findUserByEmail = async (req, res) => {
-  const { tiendaId } = req; // <--- MODIFICADO (Obtenemos el ID de la tienda)
+  const { tiendaId } = req; 
   const { email } = req.body;
 
   if (!email) {
@@ -94,7 +91,7 @@ exports.findUserByEmail = async (req, res) => {
   }
 
   try {
-    // PASO 1: Buscar al cliente (esto es global, está bien)
+    // PASO 1: Buscar al cliente
     const userQuery = 'SELECT id, nombre, email FROM usuarios WHERE email = $1 AND rol = \'Cliente\'';
     const userResult = await db.query(userQuery, [email]);
     if (userResult.rows.length === 0) {
@@ -102,8 +99,6 @@ exports.findUserByEmail = async (req, res) => {
     }
     const cliente = userResult.rows[0];
 
-    // --- LÓGICA DE RECOMPENSAS (Traída de recompensasController) ---
-    
     // PASO 2: Contar sus compras EN ESTA TIENDA
     const comprasQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1 AND tienda_id = $2';
     const comprasResult = await db.query(comprasQuery, [cliente.id, tiendaId]);
@@ -124,7 +119,7 @@ exports.findUserByEmail = async (req, res) => {
     let recompensasParaEnviar = [];
     if (recompensasDisponibles > 0) {
       recompensasParaEnviar.push({
-        id: 1, // ID de la recompensa de café
+        id: 1, 
         nombre: 'Café o Frappe Gratis',
         cantidad: recompensasDisponibles
       });
@@ -140,7 +135,6 @@ exports.findUserByEmail = async (req, res) => {
 
 //=================================================================
 // GESTIONAR DIRECCIÓN GUARDADA DEL CLIENTE
-// (SIN CAMBIOS - La dirección es global)
 //=================================================================
 
 // Obtiene la dirección guardada
@@ -160,20 +154,23 @@ exports.obtenerMiDireccion = async (req, res) => {
   }
 };
 
-// Actualiza la dirección
+// Actualiza la dirección (CON LA CORRECCIÓN DEL TELÉFONO)
 exports.actualizarMiDireccion = async (req, res) => {
-  const { lat, lng, description, referencia } = req.body;
+  // 1. Recibimos el teléfono del body
+  const { lat, lng, description, referencia, telefono } = req.body;
   const id_cliente = req.user.id;
 
   if (lat === undefined || lng === undefined || !description) {
     return res.status(400).json({ msg: 'Faltan datos de la dirección.' });
   }
 
+  // 2. Lo guardamos en el objeto que va a la base de datos
   const direccionCompleta = {
     lat,
     lng,
     description,
-    referencia
+    referencia,
+    telefono 
   };
 
   try {
