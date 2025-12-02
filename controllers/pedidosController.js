@@ -29,9 +29,10 @@ exports.crearPedido = async (req, res) => {
     return res.status(400).json({ msg: 'El pedido no puede estar vacío.' });
   }
 
-  if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined || longitude === undefined)) {
-    return res.status(400).json({ msg: 'La dirección y coordenadas son obligatorias para la entrega a domicilio.' });
-  }
+  // VALIDACIÓN ACTUALIZADA
+if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined || longitude === undefined || !telefono)) {
+    return res.status(400).json({ msg: 'La dirección, coordenadas y teléfono son obligatorios para domicilio.' });
+}
 
   try {
     await db.query('BEGIN');
