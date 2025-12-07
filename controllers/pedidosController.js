@@ -2,10 +2,18 @@ const db = require('../config/db');
 const axios = require('axios');
 
 //=================================================================
+// CONFIGURACIÓN DE EMERGENCIA
+// Esto fuerza a que todo funcione como "Miss Donitas" (ID 2)
+//=================================================================
+const ID_TIENDA_FIJO = '2'; 
+
+//=================================================================
 // CREAR UN NUEVO PEDIDO
 //=================================================================
 exports.crearPedido = async (req, res) => {
-  const { tiendaId } = req;
+  let { tiendaId } = req;
+  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+
   const {
     total,
     productos,
@@ -30,9 +38,9 @@ exports.crearPedido = async (req, res) => {
   }
 
   // VALIDACIÓN ACTUALIZADA
-if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined || longitude === undefined || !telefono)) {
+  if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined || longitude === undefined || !telefono)) {
     return res.status(400).json({ msg: 'La dirección, coordenadas y teléfono son obligatorios para domicilio.' });
-}
+  }
 
   try {
     await db.query('BEGIN');
@@ -94,16 +102,16 @@ if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined 
     let recompensaGenerada = false;
     
     // ==========================================================
-    // CORRECCIÓN FATAL: LÓGICA DE RECOMPENSA POR TIENDA
+    // LÓGICA DE RECOMPENSA (Ahora sí detectará Tienda 2)
     // ==========================================================
     if (totalPedidos > 0 && totalPedidos % 20 === 0) {
       
       let nombreRecompensa = '';
       
-      // Asume que '1' es la tienda de Tito y '2' es Miss Donitas.
-      if (tiendaId === '1') {
+      // Usamos '==' para flexibilidad
+      if (tiendaId == '1') {
         nombreRecompensa = `¡Felicidades! Un Tito Pikulito O un Tito Mojadito gratis por tus ${totalPedidos} compras.`;
-      } else if (tiendaId === '2') {
+      } else if (tiendaId == '2') {
         nombreRecompensa = `¡Felicidades! Una Dona Especial gratis por tus ${totalPedidos} compras.`; 
       } else {
         nombreRecompensa = `¡Felicidades! Tienes una recompensa gratis por tus ${totalPedidos} compras.`; 
@@ -127,7 +135,6 @@ if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined 
 
   } catch (err) {
     await db.query('ROLLBACK');
-    // La línea 60 del error previo ahora debería ser esta consulta, ya limpia:
     console.error("Error en crearPedido:", err.message, err.stack); 
     res.status(500).send('Error del Servidor al realizar el pedido');
   }
@@ -137,20 +144,21 @@ if (tipo_orden === 'domicilio' && (!direccion_entrega || latitude === undefined 
 // OBTENER TODOS LOS PEDIDOS (Para el Admin)
 //=================================================================
 exports.obtenerPedidos = async (req, res) => {
-  const { tiendaId } = req;
+  let { tiendaId } = req;
+  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
 
   try {
     const query = `
       SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.direccion_entrega, 
              p.latitude, p.longitude, p.referencia, p.telefono, u.nombre AS nombre_cliente, 
              (SELECT json_agg(json_build_object(
-               'nombre', pr.nombre, 
-               'cantidad', dp.cantidad, 
-               'precio', dp.precio_unidad,
-               'opciones', dp.opciones
-             )) 
-             FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id 
-             WHERE dp.id_pedido = p.id) AS productos 
+                'nombre', pr.nombre, 
+                'cantidad', dp.cantidad, 
+                'precio', dp.precio_unidad,
+                'opciones', dp.opciones
+              )) 
+              FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id 
+              WHERE dp.id_pedido = p.id) AS productos 
       FROM pedidos p 
       LEFT JOIN usuarios u ON p.id_cliente = u.id 
       WHERE p.tienda_id = $1 
@@ -168,20 +176,21 @@ exports.obtenerPedidos = async (req, res) => {
 // OBTENER PEDIDOS DE UN CLIENTE (Para el Cliente)
 //=================================================================
 exports.obtenerMisPedidos = async (req, res) => {
-  const { tiendaId } = req;
+  let { tiendaId } = req;
+  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
   const id_cliente = req.user.id;
 
   try {
     const query = `
       SELECT p.id, p.fecha, p.total, p.estado, p.tipo_orden, p.telefono,
              (SELECT json_agg(json_build_object(
-               'nombre', pr.nombre, 
-               'cantidad', dp.cantidad, 
-               'precio', dp.precio_unidad,
-               'opciones', dp.opciones
-             )) 
-             FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id 
-             WHERE dp.id_pedido = p.id) AS productos 
+                'nombre', pr.nombre, 
+                'cantidad', dp.cantidad, 
+                'precio', dp.precio_unidad,
+                'opciones', dp.opciones
+              )) 
+              FROM detalles_pedido dp JOIN productos pr ON dp.id_producto = pr.id 
+              WHERE dp.id_pedido = p.id) AS productos 
       FROM pedidos p 
       WHERE p.id_cliente = $1 AND p.tienda_id = $2 
       ORDER BY p.fecha DESC;
@@ -198,7 +207,8 @@ exports.obtenerMisPedidos = async (req, res) => {
 // ACTUALIZAR ESTADO DE UN PEDIDO (Para el Admin)
 //=================================================================
 exports.actualizarEstadoPedido = async (req, res) => {
-  const { tiendaId } = req;
+  let { tiendaId } = req;
+  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
   const { id } = req.params;
   const { estado } = req.body;
 
@@ -223,17 +233,19 @@ exports.actualizarEstadoPedido = async (req, res) => {
 // CALCULAR COSTO DE ENVÍO
 //=================================================================
 exports.calcularCostoEnvio = async (req, res) => {
-  const { tiendaId } = req;
+  let { tiendaId } = req;
+  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+  
   const { lat, lng } = req.body;
   const apiKey = process.env.GOOGLE_MAPS_API_KEY_BACKEND;
 
   let originLat;
   let originLng;
 
-  if (tiendaId === '1') {
+  if (tiendaId == '1') {
     originLat = process.env.STORE_LATITUDE_1;
     originLng = process.env.STORE_LONGITUDE_1;
-  } else if (tiendaId === '2') {
+  } else if (tiendaId == '2') {
     originLat = process.env.STORE_LATITUDE_2;
     originLng = process.env.STORE_LONGITUDE_2;
   } else {
@@ -275,7 +287,8 @@ exports.calcularCostoEnvio = async (req, res) => {
 // PURGAR PEDIDOS
 //=================================================================
 exports.purgarPedidos = async (req, res) => {
-  const { tiendaId } = req;
+  let { tiendaId } = req;
+  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
 
   try {
     await db.query('BEGIN');
