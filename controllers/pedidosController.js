@@ -94,6 +94,16 @@ exports.crearPedido = async (req, res) => {
         }
       }
     }
+
+    // ==========================================================
+    // NUEVA MEJORA: GUARDAR EL TELÉFONO EN EL USUARIO
+    // ==========================================================
+    if (telefono) {
+        // Actualizamos la tabla de usuarios para que recuerde el número
+        // NOTA: Asegúrate de tener una columna 'telefono' en tu tabla 'usuarios'
+        await db.query('UPDATE usuarios SET telefono = $1 WHERE id = $2', [telefono, id_cliente]);
+    }
+    // ==========================================================
     
     const countQuery = 'SELECT COUNT(*) FROM pedidos WHERE id_cliente = $1 AND tienda_id = $2';
     const countResult = await db.query(countQuery, [id_cliente, tiendaId]);
@@ -102,13 +112,12 @@ exports.crearPedido = async (req, res) => {
     let recompensaGenerada = false;
     
     // ==========================================================
-    // LÓGICA DE RECOMPENSA (Ahora sí detectará Tienda 2)
+    // LÓGICA DE RECOMPENSA
     // ==========================================================
     if (totalPedidos > 0 && totalPedidos % 20 === 0) {
       
       let nombreRecompensa = '';
       
-      // Usamos '==' para flexibilidad
       if (tiendaId == '1') {
         nombreRecompensa = `¡Felicidades! Un Tito Pikulito O un Tito Mojadito gratis por tus ${totalPedidos} compras.`;
       } else if (tiendaId == '2') {
@@ -123,7 +132,6 @@ exports.crearPedido = async (req, res) => {
       );
       recompensaGenerada = true;
     }
-    // ==========================================================
     
     await db.query('COMMIT');
 
@@ -145,7 +153,7 @@ exports.crearPedido = async (req, res) => {
 //=================================================================
 exports.obtenerPedidos = async (req, res) => {
   let { tiendaId } = req;
-  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+  tiendaId = ID_TIENDA_FIJO; 
 
   try {
     const query = `
@@ -177,7 +185,7 @@ exports.obtenerPedidos = async (req, res) => {
 //=================================================================
 exports.obtenerMisPedidos = async (req, res) => {
   let { tiendaId } = req;
-  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+  tiendaId = ID_TIENDA_FIJO; 
   const id_cliente = req.user.id;
 
   try {
@@ -208,7 +216,7 @@ exports.obtenerMisPedidos = async (req, res) => {
 //=================================================================
 exports.actualizarEstadoPedido = async (req, res) => {
   let { tiendaId } = req;
-  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+  tiendaId = ID_TIENDA_FIJO;
   const { id } = req.params;
   const { estado } = req.body;
 
@@ -234,7 +242,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
 //=================================================================
 exports.calcularCostoEnvio = async (req, res) => {
   let { tiendaId } = req;
-  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+  tiendaId = ID_TIENDA_FIJO; 
   
   const { lat, lng } = req.body;
   const apiKey = process.env.GOOGLE_MAPS_API_KEY_BACKEND;
@@ -288,7 +296,7 @@ exports.calcularCostoEnvio = async (req, res) => {
 //=================================================================
 exports.purgarPedidos = async (req, res) => {
   let { tiendaId } = req;
-  tiendaId = ID_TIENDA_FIJO; // <--- FORZAMOS QUE SEA MISS DONITAS
+  tiendaId = ID_TIENDA_FIJO;
 
   try {
     await db.query('BEGIN');
